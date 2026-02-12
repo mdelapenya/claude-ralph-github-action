@@ -23,8 +23,6 @@ ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
 
 BASE_BRANCH="${INPUT_BASE_BRANCH:-main}"
 BRANCH_NAME="ralph/issue-${ISSUE_NUMBER}"
-REPO="${GITHUB_REPOSITORY}"
-
 echo "🤖 === Claude Ralph GitHub Action ==="
 echo "📋 Issue: #${ISSUE_NUMBER} - ${ISSUE_TITLE}"
 echo "🌿 Branch: ${BRANCH_NAME}"
