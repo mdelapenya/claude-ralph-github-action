@@ -1,0 +1,33 @@
+name: Ralph Loop
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  ralph:
+    if: github.event.label.name == 'ralph'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mdelapenya/claude-ralph-github-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional: customize models
+          # worker_model: 'opus'
+          # reviewer_model: 'sonnet'
+          # Optional: adjust iteration limits
+          # max_iterations: 5
+          # max_turns_worker: 30
+          # max_turns_reviewer: 10
+          # Optional: change trigger label
+          # trigger_label: 'ralph'
+          # Optional: change base branch
+          # base_branch: 'main'

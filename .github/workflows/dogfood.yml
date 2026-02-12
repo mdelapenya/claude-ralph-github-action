@@ -1,0 +1,27 @@
+name: Ralph Dogfood
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ralph-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  ralph:
+    if: github.event.label.name == 'ralph'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        timeout-minutes: 55
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -1,0 +1,26 @@
+{
+  "action": "labeled",
+  "issue": {
+    "number": 1,
+    "title": "Add a greeting utility",
+    "body": "Create a file called `greet.sh` that prints \"Hello from Ralph!\" when executed.\n\nAcceptance criteria:\n- File exists at `greet.sh`\n- Running `bash greet.sh` prints exactly: Hello from Ralph!\n- The script has a shebang line (`#!/usr/bin/env bash`)",
+    "labels": [
+      {
+        "name": "ralph"
+      }
+    ],
+    "user": {
+      "login": "test-user"
+    }
+  },
+  "label": {
+    "name": "ralph"
+  },
+  "repository": {
+    "full_name": "test-owner/test-repo",
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "test-user"
+  }
+}

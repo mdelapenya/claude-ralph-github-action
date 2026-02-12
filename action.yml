@@ -1,0 +1,76 @@
+name: 'Claude Ralph Loop'
+description: 'Implements the Ralph loop pattern using Claude Code CLI - iterative work/review/ship cycles on GitHub issues'
+author: 'mdelapenya'
+
+branding:
+  icon: 'repeat'
+  color: 'orange'
+
+inputs:
+  anthropic_api_key:
+    description: 'Anthropic API key for Claude CLI'
+    required: true
+  github_token:
+    description: 'GitHub token for PR and issue operations'
+    required: false
+    default: ${{ github.token }}
+  worker_model:
+    description: 'Claude model for the worker phase'
+    required: false
+    default: 'sonnet'
+  reviewer_model:
+    description: 'Claude model for the review phase'
+    required: false
+    default: 'sonnet'
+  max_iterations:
+    description: 'Maximum number of work/review cycles'
+    required: false
+    default: '5'
+  max_turns_worker:
+    description: 'Maximum agentic turns per worker invocation'
+    required: false
+    default: '30'
+  max_turns_reviewer:
+    description: 'Maximum agentic turns per reviewer invocation'
+    required: false
+    default: '10'
+  trigger_label:
+    description: 'Issue label that triggers the Ralph loop'
+    required: false
+    default: 'ralph'
+  base_branch:
+    description: 'Branch to create the PR against'
+    required: false
+    default: 'main'
+  worker_allowed_tools:
+    description: 'Comma-separated tools the worker can use'
+    required: false
+    default: 'Bash,Read,Write,Edit,Glob,Grep'
+  reviewer_tools:
+    description: 'Comma-separated tools the reviewer can use'
+    required: false
+    default: 'Read,Glob,Grep,Write'
+
+outputs:
+  pr_url:
+    description: 'URL of the created or updated pull request'
+  iterations:
+    description: 'Number of work/review iterations completed'
+  final_status:
+    description: 'Final status: SHIPPED, MAX_ITERATIONS, or ERROR'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+    GH_TOKEN: ${{ inputs.github_token }}
+    INPUT_WORKER_MODEL: ${{ inputs.worker_model }}
+    INPUT_REVIEWER_MODEL: ${{ inputs.reviewer_model }}
+    INPUT_MAX_ITERATIONS: ${{ inputs.max_iterations }}
+    INPUT_MAX_TURNS_WORKER: ${{ inputs.max_turns_worker }}
+    INPUT_MAX_TURNS_REVIEWER: ${{ inputs.max_turns_reviewer }}
+    INPUT_TRIGGER_LABEL: ${{ inputs.trigger_label }}
+    INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
+    INPUT_WORKER_ALLOWED_TOOLS: ${{ inputs.worker_allowed_tools }}
+    INPUT_REVIEWER_TOOLS: ${{ inputs.reviewer_tools }}
