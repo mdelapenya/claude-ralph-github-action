@@ -43,7 +43,7 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   # Commit worker changes (code only, exclude .ralph/ state)
   git add -A -- ':!.ralph'
   if ! git diff --cached --quiet; then
-    git commit -m "chore(ralph): apply worker changes from iteration ${iteration}"
+    git commit -m "chore(ralph): apply changes from iteration ${iteration}"
   else
     echo "WARNING: Worker made no changes on iteration ${iteration}"
   fi
