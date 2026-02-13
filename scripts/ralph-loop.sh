@@ -45,7 +45,9 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   if ! git diff --cached --quiet; then
     git commit -m "ralph: worker changes (iteration ${iteration})"
   else
-    echo "WARNING: Worker made no changes on iteration ${iteration}"
+    echo "❌ Worker made no changes on iteration ${iteration}. Aborting."
+    state_write_final_status "ERROR"
+    exit 1
   fi
 
   # --- REVIEW PHASE ---
