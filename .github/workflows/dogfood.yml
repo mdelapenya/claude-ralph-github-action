@@ -42,7 +42,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore Docker image cache
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image.tar
+          key: docker-ralph-${{ hashFiles('Dockerfile', 'entrypoint.sh', 'scripts/**', 'prompts/**') }}
+
+      - name: Load cached Docker image
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/docker-image.tar
+
       - uses: ./
         timeout-minutes: 55
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Save Docker image to cache
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        run: |
+          docker build -t claude-ralph-cache .
+          docker save -o /tmp/docker-image.tar claude-ralph-cache
