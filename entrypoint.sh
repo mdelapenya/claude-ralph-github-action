@@ -167,42 +167,76 @@ if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
   git commit -m "ralph: remove state directory from branch"
 fi
 
+# --- Determine merge strategy ---
+MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
+DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH}"
+
+# If default_branch is not specified and we're using squash-merge, auto-detect it
+if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
+  echo "🔍 Auto-detecting default branch..."
+  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name')"
+  echo "   Detected: ${DEFAULT_BRANCH}"
+fi
+
 # --- Push branch ---
 echo ""
 echo "⬆️  Pushing branch ${BRANCH_NAME}..."
 git push origin "${BRANCH_NAME}"
 
-# --- Create or update PR ---
-echo ""
-echo "🔀 Managing pull request..."
-pr_url=""
-pr_url="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {
-  echo "⚠️  PR management failed"
-  pr_url=""
-}
+# --- Handle merge strategy ---
+pr_url_or_sha=""
+if [[ "${MERGE_STRATEGY}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
+  # Squash merge directly to default branch
+  echo ""
+  echo "🔀 Squash-merging to ${DEFAULT_BRANCH}..."
+  pr_url_or_sha="$(pr_squash_merge "${BRANCH_NAME}" "${DEFAULT_BRANCH}" "${ISSUE_NUMBER}")" || {
+    echo "⚠️  Squash merge failed"
+    pr_url_or_sha=""
+  }
 
-# Extract just the URL (last line of output from pr_create_or_update)
-if [[ -n "${pr_url}" ]]; then
-  pr_url="$(echo "${pr_url}" | tail -1)"
+  # Close the issue since we've merged to default branch
+  if [[ -n "${pr_url_or_sha}" ]]; then
+    echo "🔒 Closing issue #${ISSUE_NUMBER}..."
+    gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" --comment "Closed by squash-merge commit ${pr_url_or_sha}" || {
+      echo "⚠️  Failed to close issue"
+    }
+  fi
+else
+  # Create or update PR (default behavior or non-SHIPPED status with squash-merge)
+  echo ""
+  echo "🔀 Managing pull request..."
+  pr_url_or_sha="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {
+    echo "⚠️  PR management failed"
+    pr_url_or_sha=""
+  }
+
+  # Extract just the URL (last line of output from pr_create_or_update)
+  if [[ -n "${pr_url_or_sha}" ]]; then
+    pr_url_or_sha="$(echo "${pr_url_or_sha}" | tail -1)"
+  fi
 fi
 
 # --- Comment on issue ---
 echo ""
 echo "💬 Commenting on issue #${ISSUE_NUMBER}..."
-issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url}" || {
+issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${MERGE_STRATEGY}" || {
   echo "⚠️  Issue comment failed"
 }
 
 # --- Set outputs ---
 {
-  echo "pr_url=${pr_url}"
+  echo "pr_url=${pr_url_or_sha}"
   echo "iterations=${iteration}"
   echo "final_status=${final_status}"
 } >> "${GITHUB_OUTPUT}"
 
 echo ""
 echo "✅ === Done ==="
-echo "🔗 PR: ${pr_url}"
+if [[ "${MERGE_STRATEGY}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
+  echo "🔗 Commit: ${pr_url_or_sha}"
+else
+  echo "🔗 PR: ${pr_url_or_sha}"
+fi
 echo "📊 Status: ${final_status}"
 echo "🔢 Iterations: ${iteration}"
 

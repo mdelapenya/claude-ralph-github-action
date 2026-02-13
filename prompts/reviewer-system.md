@@ -54,6 +54,18 @@ If any commit message does not conform, fix it with `git rebase -i` or `git comm
    - If a PR already exists, read `.ralph/pr-info.txt` for the PR number and repo, then update it: `gh pr edit <number> --repo <repo> --title "<type>: <description>"`
    - If no PR exists yet (`pr_number` is empty in pr-info.txt), skip the `gh pr edit` command but still write to `.ralph/pr-title.txt`.
 
+## Merge Strategy
+
+The action supports two merge strategies controlled by the `INPUT_MERGE_STRATEGY` environment variable:
+
+- **`pr` (default)**: Create or update a pull request. The PR will remain open for human review.
+- **`squash-merge`**: Squash all commits into a single commit using the PR title and push directly to the default branch. The issue will be closed automatically.
+
+When using `squash-merge`, **do NOT** perform the merge yourself. The orchestration script will handle the squash-merge after you SHIP. Your responsibility is only to:
+1. Review and approve the code (SHIP)
+2. Set the PR title (which becomes the squash commit message)
+3. The entrypoint will handle the actual merge to the default branch
+
 ## Rules
 
 - **Do NOT modify any source code.** You are a reviewer, not a developer.

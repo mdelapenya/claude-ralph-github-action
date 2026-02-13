@@ -50,6 +50,14 @@ inputs:
     description: 'Comma-separated tools the reviewer can use'
     required: false
     default: 'Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task'
+  merge_strategy:
+    description: 'Merge strategy: "pr" (default, create a pull request) or "squash-merge" (squash and push directly to default branch)'
+    required: false
+    default: 'pr'
+  default_branch:
+    description: 'Default branch to merge into when using squash-merge strategy (auto-detected from repo if not specified)'
+    required: false
+    default: ''
 
 outputs:
   pr_url:
@@ -74,3 +82,5 @@ runs:
     INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
     INPUT_WORKER_ALLOWED_TOOLS: ${{ inputs.worker_allowed_tools }}
     INPUT_REVIEWER_TOOLS: ${{ inputs.reviewer_tools }}
+    INPUT_MERGE_STRATEGY: ${{ inputs.merge_strategy }}
+    INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
