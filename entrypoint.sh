@@ -169,6 +169,13 @@ fi
 
 # --- Determine merge strategy ---
 MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
+
+# Validate merge strategy - must be 'pr' or 'squash-merge', default to 'pr' if invalid
+if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
+  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
+  MERGE_STRATEGY="pr"
+fi
+
 DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH}"
 
 # If default_branch is not specified and we're using squash-merge, auto-detect it
