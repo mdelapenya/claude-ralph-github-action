@@ -189,7 +189,7 @@ echo "🏁 === Ralph Loop Finished: ${final_status} (${iteration} iterations) ==
 # --- Remove .ralph/ if it was accidentally staged/committed ---
 if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
   git rm -rf --quiet .ralph
-  git commit -m "ralph: remove state directory from branch"
+  git commit -m "chore(ralph): remove state directory from branch"
 fi
 
 # --- Push branch ---
