@@ -23,7 +23,6 @@ echo "=== Ralph Loop Starting (iteration: ${iteration}, max: ${MAX_ITERATIONS}) 
 while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   iteration=$((iteration + 1))
   state_write_iteration "${iteration}"
-  state_commit "ralph: start iteration ${iteration}"
 
   echo ""
   echo "=========================================="
@@ -33,23 +32,23 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   # --- WORK PHASE ---
   echo ""
   echo "--- Work Phase ---"
+  head_before="$(git rev-parse HEAD)"
+
   if ! "${SCRIPT_DIR}/worker.sh"; then
     echo "ERROR: Worker failed on iteration ${iteration}"
     state_write_final_status "ERROR"
-    state_commit "ralph: worker error on iteration ${iteration}"
     exit 1
   fi
 
-  # Commit worker changes (code only, exclude .ralph/ state)
-  git add -A -- ':!.ralph'
-  if ! git diff --cached --quiet; then
-    git commit -m "ralph: worker changes (iteration ${iteration})"
-  elif [[ "${IS_CONTINUATION:-false}" == "true" ]]; then
-    echo "ℹ️  Worker made no new changes (continuation). Proceeding to review."
-  else
-    echo "❌ Worker made no changes on iteration ${iteration}. Aborting."
-    state_write_final_status "ERROR"
-    exit 1
+  head_after="$(git rev-parse HEAD)"
+  if [[ "${head_before}" == "${head_after}" ]]; then
+    if [[ "${IS_CONTINUATION:-false}" == "true" ]]; then
+      echo "ℹ️  Worker made no new changes (continuation). Proceeding to review."
+    else
+      echo "❌ Worker made no changes on iteration ${iteration}. Aborting."
+      state_write_final_status "ERROR"
+      exit 1
+    fi
   fi
 
   # --- REVIEW PHASE ---
@@ -58,12 +57,8 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   if ! "${SCRIPT_DIR}/reviewer.sh"; then
     echo "ERROR: Reviewer failed on iteration ${iteration}"
     state_write_final_status "ERROR"
-    state_commit "ralph: reviewer error on iteration ${iteration}"
     exit 1
   fi
-
-  # Commit review state
-  state_commit "ralph: review complete (iteration ${iteration})"
 
   # --- DECIDE ---
   result="$(state_read_review_result)"
@@ -73,7 +68,6 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   if [[ "${result}" == "SHIP" ]]; then
     echo "Reviewer approved! Shipping."
     state_write_final_status "SHIPPED"
-    state_commit "ralph: SHIPPED on iteration ${iteration}"
     exit 0
   fi
 
@@ -87,5 +81,4 @@ done
 echo ""
 echo "=== Max iterations (${MAX_ITERATIONS}) reached ==="
 state_write_final_status "MAX_ITERATIONS"
-state_commit "ralph: max iterations reached"
 exit 2

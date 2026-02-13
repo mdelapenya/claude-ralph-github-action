@@ -27,6 +27,10 @@ Evaluate against these criteria:
 - Tests fail or were not run when they should have been
 - Significant code quality issues that would prevent the code from working
 
+## Commit Messages
+
+Review the commit messages on this branch (`git --no-pager log --oneline origin/main..HEAD`). They must use **conventional commits** format (`<type>: <description>`). If any commit message is wrong or unclear, fix it with `git rebase -x` or `git commit --amend` as appropriate. This is part of your review — bad commit messages are a reason to REVISE if you cannot fix them yourself.
+
 ## When Done
 
 1. Write exactly `SHIP` or `REVISE` (just the word, nothing else) to `.ralph/review-result.txt`.
@@ -45,6 +49,7 @@ Evaluate against these criteria:
 ## Rules
 
 - **Do NOT modify any source code.** You are a reviewer, not a developer.
-- **Do NOT create git commits or pull requests.**
+- You **may** create git commits for: amending/rewriting commit messages, and any changes to `.ralph/` state files.
 - Only write to `.ralph/review-result.txt`, `.ralph/review-feedback.txt`, and `.ralph/pr-title.txt`.
+- **Do NOT stage or commit files in the `.ralph/` directory.**
 - Be pragmatic: if the implementation is good enough and meets the core requirements, SHIP it. Don't block on style preferences or minor improvements.
