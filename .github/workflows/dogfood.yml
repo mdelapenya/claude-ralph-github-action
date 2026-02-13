@@ -2,7 +2,7 @@ name: Ralph Dogfood
 
 on:
   issues:
-    types: [labeled, edited]
+    types: [labeled]
   pull_request:
     types: [labeled]
 
@@ -31,7 +31,7 @@ jobs:
           fi
 
   ralph:
-    if: github.event_name == 'issues' && (github.event.label.name == 'ralph' || contains(github.event.issue.labels.*.name, 'ralph'))
+    if: github.event_name == 'issues' && github.event.label.name == 'ralph'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
