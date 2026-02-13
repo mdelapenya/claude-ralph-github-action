@@ -1,0 +1,50 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: 'Ralph Shipped This'
+    labels:
+      - 'ralph'
+  - title: 'New Loop Powers'
+    labels:
+      - 'enhancement'
+      - 'feature'
+  - title: 'Bug Squashed by the Loop'
+    labels:
+      - 'bug'
+      - 'fix'
+  - title: 'Worker & Reviewer Tuning'
+    labels:
+      - 'prompts'
+      - 'agents'
+  - title: 'Under the Hood'
+    labels:
+      - 'chore'
+      - 'dependencies'
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+exclude-labels:
+  - 'skip-changelog'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+  minor:
+    labels:
+      - 'minor'
+  patch:
+    labels:
+      - 'patch'
+  default: patch
+
+template: |
+  ## Changes
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
