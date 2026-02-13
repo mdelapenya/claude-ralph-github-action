@@ -40,8 +40,8 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
     exit 1
   fi
 
-  # Commit worker changes (code changes + work summary)
-  git add -A
+  # Commit worker changes (code only, exclude .ralph/ state)
+  git add -A -- ':!.ralph'
   if ! git diff --cached --quiet; then
     git commit -m "ralph: worker changes (iteration ${iteration})"
   else
