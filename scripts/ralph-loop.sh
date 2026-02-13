@@ -44,9 +44,9 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   git add -A -- ':!.ralph'
   if ! git diff --cached --quiet; then
     # Try to extract conventional commit message from work summary
-    local commit_msg="chore(ralph): apply changes from iteration ${iteration}"
+    commit_msg="chore(ralph): apply changes from iteration ${iteration}"
     if [[ -f ".ralph/work-summary.txt" ]]; then
-      local first_line
+      first_line=""
       first_line="$(head -n 1 .ralph/work-summary.txt)"
       # Check if first line matches conventional commit pattern (type(scope): description or type: description)
       if echo "${first_line}" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+'; then
