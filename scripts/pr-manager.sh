@@ -53,9 +53,8 @@ pr_create_or_update() {
     ERROR)        status_suffix=" [ERROR]" ;;
   esac
 
-  # Format title: lowercase first letter of description per conventional commits spec
+  # Use issue title as description, keeping its original case
   local description="${issue_title}"
-  description="$(echo "${description:0:1}" | tr '[:upper:]' '[:lower:]')${description:1}"
 
   local pr_title="${commit_type}: ${description}${status_suffix}"
 
