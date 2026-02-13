@@ -20,6 +20,14 @@ EVENT_PATH="${GITHUB_EVENT_PATH}"
 ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
 ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"
 ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
+IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
+
+# --- Reject pull requests ---
+if [[ -n "${IS_PULL_REQUEST}" ]]; then
+  echo "⚠️  Ralph was triggered on a pull request (#${ISSUE_NUMBER}), not an issue. Skipping."
+  gh issue comment "${ISSUE_NUMBER}" --body "🤖 **Ralph** can only work on issues, not pull requests. Please label an issue instead." || true
+  exit 0
+fi
 
 BASE_BRANCH="${INPUT_BASE_BRANCH:-main}"
 BRANCH_NAME="ralph/issue-${ISSUE_NUMBER}"

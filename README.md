@@ -79,6 +79,14 @@ Ralph creates a `.ralph/` directory on the working branch to persist state acros
 
 The worker agent can read/write code but cannot create commits or PRs. The reviewer agent can only read files and write its verdict. The orchestration scripts handle git operations, PR management, and issue comments.
 
+### Re-runs
+
+If the `ralph` label is removed and re-added, Ralph detects the existing branch, checks it out, and continues from where it left off. The worker receives a context file with the branch's commit history so it understands what was already done. New commits are added on top — Ralph never force-pushes.
+
+### Pull requests
+
+Ralph only works on **issues**. If the `ralph` label is added to a pull request, Ralph will post a comment explaining it can only work on issues, and exit without making changes.
+
 ## Local Testing
 
 ```bash
