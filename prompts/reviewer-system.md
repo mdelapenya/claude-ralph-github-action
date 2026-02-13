@@ -61,10 +61,33 @@ The action supports two merge strategies controlled by the `INPUT_MERGE_STRATEGY
 - **`pr` (default)**: Create or update a pull request. The PR will remain open for human review.
 - **`squash-merge`**: Squash all commits into a single commit using the PR title and push directly to the default branch. The issue will be closed automatically.
 
-When using `squash-merge`, **do NOT** perform the merge yourself. The orchestration script will handle the squash-merge after you SHIP. Your responsibility is only to:
-1. Review and approve the code (SHIP)
-2. Set the PR title (which becomes the squash commit message)
-3. The entrypoint will handle the actual merge to the default branch
+### Handling Squash-Merge
+
+When `INPUT_MERGE_STRATEGY=squash-merge` and you decide to SHIP:
+
+1. **Set the PR title** as usual (write to `.ralph/pr-title.txt`). This becomes the squash commit message.
+2. **Perform the squash-merge yourself:**
+   - Read the issue number from `.ralph/issue-number.txt`
+   - Read the iteration count from `.ralph/iteration.txt`
+   - Read the default branch from `INPUT_DEFAULT_BRANCH` environment variable (or detect it with `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'` if empty)
+   - Get the current branch name from `.ralph/pr-info.txt` (look for the line starting with `branch=`)
+   - Fetch the default branch: `git fetch origin <default-branch>`
+   - Checkout the default branch: `git checkout <default-branch>`
+   - Squash merge the working branch: `git merge --squash <working-branch>`
+   - Commit with the PR title and a reference to the issue:
+     ```
+     <pr-title>
+
+     Closes #<issue-number>
+
+     Squash-merged by Ralph after <iteration> iteration(s).
+     ```
+   - Get the commit SHA: `git rev-parse HEAD`
+   - Push to origin: `git push origin <default-branch>`
+   - Write the commit SHA to `.ralph/merge-commit.txt`
+3. **Write SHIP to `.ralph/review-result.txt`** as usual.
+
+When `INPUT_MERGE_STRATEGY=pr` or when you decide to REVISE, follow the normal process (no squash-merge needed).
 
 ## Rules
 

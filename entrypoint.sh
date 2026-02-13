@@ -192,14 +192,13 @@ git push origin "${BRANCH_NAME}"
 
 # --- Handle merge strategy ---
 pr_url_or_sha=""
-if [[ "${MERGE_STRATEGY}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
-  # Squash merge directly to default branch
+
+# Check if the reviewer performed a squash-merge
+if [[ -f ".ralph/merge-commit.txt" ]]; then
+  # Reviewer already performed squash-merge
+  pr_url_or_sha="$(cat .ralph/merge-commit.txt)"
   echo ""
-  echo "🔀 Squash-merging to ${DEFAULT_BRANCH}..."
-  pr_url_or_sha="$(pr_squash_merge "${BRANCH_NAME}" "${DEFAULT_BRANCH}" "${ISSUE_NUMBER}")" || {
-    echo "⚠️  Squash merge failed"
-    pr_url_or_sha=""
-  }
+  echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
 
   # Close the issue since we've merged to default branch
   if [[ -n "${pr_url_or_sha}" ]]; then
@@ -209,7 +208,7 @@ if [[ "${MERGE_STRATEGY}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]
     }
   fi
 else
-  # Create or update PR (default behavior or non-SHIPPED status with squash-merge)
+  # Create or update PR (default behavior)
   echo ""
   echo "🔀 Managing pull request..."
   pr_url_or_sha="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {

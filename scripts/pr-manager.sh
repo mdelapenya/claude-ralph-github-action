@@ -80,62 +80,6 @@ EOF
   fi
 }
 
-# Squash merge the branch into the default branch and push directly.
-# Args: $1 = branch name, $2 = default branch, $3 = issue number
-# Outputs: commit SHA to stdout
-pr_squash_merge() {
-  local branch="$1"
-  local default_branch="$2"
-  local issue_number="$3"
-
-  local iteration
-  iteration="$(state_read_iteration)"
-
-  # Use the reviewer's PR title if available, otherwise fall back to a generic message
-  local commit_title
-  if [[ -f ".ralph/pr-title.txt" ]]; then
-    commit_title="$(cat .ralph/pr-title.txt)"
-  else
-    commit_title="feat: implement issue #${issue_number}"
-  fi
-
-  # Build commit body with reference to the issue
-  local commit_body
-  commit_body="$(cat <<EOF
-Closes #${issue_number}
-
-Squash-merged by Ralph after ${iteration} iteration(s).
-EOF
-)"
-
-  local full_commit_message="${commit_title}
-
-${commit_body}"
-
-  echo "Squash-merging ${branch} into ${default_branch}..."
-
-  # Fetch the default branch
-  git fetch origin "${default_branch}"
-
-  # Checkout default branch
-  git checkout "${default_branch}"
-
-  # Merge with squash
-  git merge --squash "${branch}"
-
-  # Commit with the PR title
-  git commit -m "${full_commit_message}"
-
-  # Get the commit SHA
-  local commit_sha
-  commit_sha="$(git rev-parse HEAD)"
-
-  # Push to remote
-  git push origin "${default_branch}"
-
-  echo "${commit_sha}"
-}
-
 # Post a comment on the issue when Ralph starts.
 # Args: $1 = issue number
 issue_comment_start() {
