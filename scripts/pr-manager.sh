@@ -101,13 +101,16 @@ EOF
   local existing_comment_id
   existing_comment_id="$(gh api "repos/${REPO}/issues/${issue_number}/comments" \
     --jq '.[] | select(.body | contains("<!-- ralph-status-comment -->")) | .id' \
-    | head -n1 || echo "")"
+    2>/dev/null | head -n1 || echo "")"
 
   if [[ -n "${existing_comment_id}" ]]; then
     echo "Updating existing Ralph comment ID: ${existing_comment_id}"
-    gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
+    if ! gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
-      -f body="${comment}"
+      -f body="${comment}" 2>/dev/null; then
+      echo "Warning: Failed to update existing comment, creating new one"
+      gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
+    fi
   else
     echo "Creating new Ralph comment"
     gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
@@ -192,13 +195,16 @@ EOF
   local existing_comment_id
   existing_comment_id="$(gh api "repos/${REPO}/issues/${issue_number}/comments" \
     --jq '.[] | select(.body | contains("<!-- ralph-status-comment -->")) | .id' \
-    | head -n1 || echo "")"
+    2>/dev/null | head -n1 || echo "")"
 
   if [[ -n "${existing_comment_id}" ]]; then
     echo "Updating existing Ralph comment ID: ${existing_comment_id}"
-    gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
+    if ! gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
-      -f body="${comment}"
+      -f body="${comment}" 2>/dev/null; then
+      echo "Warning: Failed to update existing comment, creating new one"
+      gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
+    fi
   else
     echo "Creating new Ralph comment"
     gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
