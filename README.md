@@ -21,6 +21,8 @@ name: Ralph Loop
 on:
   issues:
     types: [labeled]
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: write
@@ -28,10 +30,25 @@ permissions:
   issues: write
 
 jobs:
+  reject-pr:
+    if: github.event_name == 'pull_request' && github.event.label.name == 'ralph'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "🤖 **Ralph** can only work on issues, not pull requests. Please create an issue and label it with \`ralph\` instead."
+
   ralph:
-    if: github.event.label.name == 'ralph'
+    if: github.event_name == 'issues' && github.event.label.name == 'ralph'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    concurrency:
+      group: ralph-${{ github.event.issue.number }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
