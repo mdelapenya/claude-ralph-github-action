@@ -117,11 +117,27 @@ state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_iteration "0"
 
+# --- Determine merge strategy early (needed for pr-info.txt) ---
+MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
+if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
+  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
+  MERGE_STRATEGY="pr"
+fi
+
+DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH:-}"
+if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
+  echo "🔍 Auto-detecting default branch..."
+  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name')"
+  echo "   Detected: ${DEFAULT_BRANCH}"
+fi
+
 # --- Write PR info for the reviewer agent ---
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
+  echo "merge_strategy=${MERGE_STRATEGY}"
+  echo "default_branch=${DEFAULT_BRANCH}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
   if [[ -n "${existing_pr_number}" ]]; then
@@ -167,22 +183,15 @@ if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
   git commit -m "ralph: remove state directory from branch"
 fi
 
-# --- Determine merge strategy ---
-MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
-
-# Validate merge strategy - must be 'pr' or 'squash-merge', default to 'pr' if invalid
-if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
-  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
-  MERGE_STRATEGY="pr"
-fi
-
-DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH}"
-
-# If default_branch is not specified and we're using squash-merge, auto-detect it
-if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
-  echo "🔍 Auto-detecting default branch..."
-  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name')"
-  echo "   Detected: ${DEFAULT_BRANCH}"
+# --- Revert any .github/workflows/ changes the agent should not have made ---
+workflow_files="$(git diff --name-only "origin/${BASE_BRANCH}...HEAD" -- .github/workflows/ 2>/dev/null || true)"
+if [[ -n "${workflow_files}" ]]; then
+  echo "⚠️  Agent modified workflow files — reverting to avoid push rejection:"
+  echo "${workflow_files}"
+  echo "${workflow_files}" | while IFS= read -r f; do
+    git checkout "origin/${BASE_BRANCH}" -- "${f}" 2>/dev/null || git rm -f --quiet "${f}"
+  done
+  git commit -m "ralph: revert unauthorized workflow file changes"
 fi
 
 # --- Push branch ---
