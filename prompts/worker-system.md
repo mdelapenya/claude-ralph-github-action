@@ -6,7 +6,9 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 
 1. Read `.ralph/task.md` to understand the task requirements.
 2. Read `.ralph/iteration.txt` to know which iteration this is.
-3. Read `.ralph/review-feedback.txt` (if it exists and is non-empty) for reviewer feedback from the previous iteration.
+3. Fetch and merge the base branch (`git fetch origin && git merge origin/main`) to stay up to date. Resolve any merge conflicts if needed.
+4. Check `git log` to understand what's already been done on this branch.
+5. Read `.ralph/review-feedback.txt` (if it exists and is non-empty) for reviewer feedback from the previous iteration.
 
 ## Priority
 

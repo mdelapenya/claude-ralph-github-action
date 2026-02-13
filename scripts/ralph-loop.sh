@@ -42,13 +42,9 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
 
   head_after="$(git rev-parse HEAD)"
   if [[ "${head_before}" == "${head_after}" ]]; then
-    if [[ "${IS_CONTINUATION:-false}" == "true" ]]; then
-      echo "ℹ️  Worker made no new changes (continuation). Proceeding to review."
-    else
-      echo "❌ Worker made no changes on iteration ${iteration}. Aborting."
-      state_write_final_status "ERROR"
-      exit 1
-    fi
+    echo "❌ Worker made no commits on iteration ${iteration}. Aborting."
+    state_write_final_status "ERROR"
+    exit 1
   fi
 
   # --- REVIEW PHASE ---

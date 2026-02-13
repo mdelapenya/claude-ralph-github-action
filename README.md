@@ -89,7 +89,6 @@ jobs:
 Ralph creates a `.ralph/` directory in the working tree (never committed to the branch) to pass state between agents:
 
 - **`task.md`** — The issue title and body
-- **`context.md`** — Branch context: fresh start vs continuation, previous commits, merge conflicts
 - **`pr-info.txt`** — Repo, branch, issue title, and existing PR number (if any)
 - **`work-summary.txt`** — Worker's summary of changes made
 - **`review-result.txt`** — `SHIP` or `REVISE`
