@@ -168,6 +168,7 @@ echo ""
 echo "🔁 === Starting Ralph Loop ==="
 
 loop_exit=0
+export IS_CONTINUATION
 "${SCRIPTS_DIR}/ralph-loop.sh" || loop_exit=$?
 
 # Determine final status
