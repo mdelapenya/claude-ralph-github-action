@@ -28,9 +28,11 @@ echo "📋 Issue: #${ISSUE_NUMBER} - ${ISSUE_TITLE}"
 echo "🌿 Branch: ${BRANCH_NAME}"
 echo "🏠 Base: ${BASE_BRANCH}"
 
-# --- Configure git identity ---
+# --- Configure git ---
 git config --global user.name "claude-ralph[bot]"
 git config --global user.email "claude-ralph[bot]@users.noreply.github.com"
+# Docker runs as a different user than the checkout owner; mark workspace as safe
+git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 # --- Set up working branch ---
 WORKSPACE="${GITHUB_WORKSPACE}"
