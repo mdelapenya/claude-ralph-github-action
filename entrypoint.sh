@@ -131,6 +131,12 @@ iteration="$(state_read_iteration)"
 echo ""
 echo "🏁 === Ralph Loop Finished: ${final_status} (${iteration} iterations) ==="
 
+# --- Remove .ralph/ if it was accidentally staged/committed ---
+if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
+  git rm -rf --quiet .ralph
+  git commit -m "ralph: remove state directory from branch"
+fi
+
 # --- Push branch ---
 echo ""
 echo "⬆️  Pushing branch ${BRANCH_NAME}..."
