@@ -27,25 +27,6 @@ pr_create_or_update() {
   local review_feedback
   review_feedback="$(state_read_review_feedback)"
 
-  # Infer conventional commit type from issue title
-  local commit_type="chore"
-  local lowercase_title
-  lowercase_title="$(echo "${issue_title}" | tr '[:upper:]' '[:lower:]')"
-
-  if echo "${lowercase_title}" | grep -qE '^(add|implement|create|new)'; then
-    commit_type="feat"
-  elif echo "${lowercase_title}" | grep -qE '^(fix|resolve|correct|repair)'; then
-    commit_type="fix"
-  elif echo "${lowercase_title}" | grep -qE '^(update|modify|change|improve|enhance)'; then
-    commit_type="chore"
-  elif echo "${lowercase_title}" | grep -qE '^(refactor|restructure|reorganize)'; then
-    commit_type="refactor"
-  elif echo "${lowercase_title}" | grep -qE '^(doc|document)'; then
-    commit_type="docs"
-  elif echo "${lowercase_title}" | grep -qE '^(test)'; then
-    commit_type="test"
-  fi
-
   # Determine status suffix based on status
   local status_suffix=""
   case "${final_status}" in
@@ -53,10 +34,39 @@ pr_create_or_update() {
     ERROR)        status_suffix=" [ERROR]" ;;
   esac
 
-  # Use issue title as description, keeping its original case
-  local description="${issue_title}"
+  # Try to extract conventional commit message from work summary first line
+  local pr_title=""
+  if [[ -n "${work_summary}" ]]; then
+    local first_line
+    first_line="$(echo "${work_summary}" | head -n 1)"
+    # Check if first line matches conventional commit pattern
+    if echo "${first_line}" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+'; then
+      pr_title="${first_line}${status_suffix}"
+    fi
+  fi
 
-  local pr_title="${commit_type}: ${description}${status_suffix}"
+  # Fallback: infer conventional commit type from issue title
+  if [[ -z "${pr_title}" ]]; then
+    local commit_type="chore"
+    local lowercase_title
+    lowercase_title="$(echo "${issue_title}" | tr '[:upper:]' '[:lower:]')"
+
+    if echo "${lowercase_title}" | grep -qE '^(add|implement|create|new)'; then
+      commit_type="feat"
+    elif echo "${lowercase_title}" | grep -qE '^(fix|resolve|correct|repair)'; then
+      commit_type="fix"
+    elif echo "${lowercase_title}" | grep -qE '^(update|modify|change|improve|enhance)'; then
+      commit_type="chore"
+    elif echo "${lowercase_title}" | grep -qE '^(refactor|restructure|reorganize)'; then
+      commit_type="refactor"
+    elif echo "${lowercase_title}" | grep -qE '^(doc|document)'; then
+      commit_type="docs"
+    elif echo "${lowercase_title}" | grep -qE '^(test)'; then
+      commit_type="test"
+    fi
+
+    pr_title="${commit_type}: ${issue_title}${status_suffix}"
+  fi
 
   # Build PR body
   local pr_body

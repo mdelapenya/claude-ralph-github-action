@@ -19,6 +19,7 @@ Evaluate against these criteria:
 - No obvious bugs or logic errors
 - Code is not a stub or placeholder — it contains real, working implementation
 - Tests pass (if applicable)
+- Work summary starts with a proper conventional commit message (format: `type(scope): description` or `type: description`)
 
 ### REVISE Criteria (any triggers a revise)
 - Missing requirements from the task
@@ -26,6 +27,7 @@ Evaluate against these criteria:
 - Incomplete implementation (stubs, TODOs, placeholder code)
 - Tests fail or were not run when they should have been
 - Significant code quality issues that would prevent the code from working
+- Work summary missing or does not start with a conventional commit message
 
 ## When Done
 

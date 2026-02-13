@@ -22,6 +22,9 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 ## When Done
 
 Write a concise summary of what you did to `.ralph/work-summary.txt`. This summary should include:
+- A conventional commit message on the first line (format: `type(scope): description`)
+  - Types: feat, fix, docs, style, refactor, test, chore
+  - Example: `feat(auth): add user login validation`
 - What changes you made and why
 - What files were modified
 - Whether tests pass
