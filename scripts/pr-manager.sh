@@ -99,11 +99,12 @@ EOF
 }
 
 # Post a comment on the issue with the Ralph loop result.
-# Args: $1 = issue number, $2 = final status, $3 = pr url
+# Args: $1 = issue number, $2 = final status, $3 = pr url or commit sha, $4 = merge strategy (optional)
 issue_comment() {
   local issue_number="$1"
   local final_status="$2"
-  local pr_url="$3"
+  local pr_url_or_sha="$3"
+  local merge_strategy="${4:-pr}"
 
   local iteration
   iteration="$(state_read_iteration)"
@@ -111,16 +112,29 @@ issue_comment() {
   local comment
   case "${final_status}" in
     SHIPPED)
-      comment="$(cat <<EOF
+      if [[ "${merge_strategy}" == "squash-merge" ]]; then
+        comment="$(cat <<EOF
 ### Ralph Loop Complete
 
 The task has been implemented and approved by the reviewer after **${iteration}** iteration(s).
 
-**Pull Request:** ${pr_url}
+**Commit:** ${pr_url_or_sha}
+
+The changes have been squash-merged directly to the default branch and this issue is now closed.
+EOF
+)"
+      else
+        comment="$(cat <<EOF
+### Ralph Loop Complete
+
+The task has been implemented and approved by the reviewer after **${iteration}** iteration(s).
+
+**Pull Request:** ${pr_url_or_sha}
 
 The PR is ready for human review and merge.
 EOF
 )"
+      fi
       ;;
     MAX_ITERATIONS)
       comment="$(cat <<EOF
@@ -128,7 +142,7 @@ EOF
 
 The Ralph loop reached the maximum of **${iteration}** iterations without the reviewer approving.
 
-**Pull Request:** ${pr_url}
+**Pull Request:** ${pr_url_or_sha}
 
 The PR contains the latest work but may need additional changes. You can:
 - Review the PR and provide manual feedback
@@ -142,7 +156,7 @@ EOF
 
 An error occurred during the Ralph loop on iteration **${iteration}**.
 
-${pr_url:+**Pull Request:** ${pr_url}}
+${pr_url_or_sha:+**Pull Request:** ${pr_url_or_sha}}
 
 Check the action logs for details. You can re-trigger by removing and re-adding the label.
 EOF

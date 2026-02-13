@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/state.sh"
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
 MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-10}"
-REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Read,Glob,Grep,Write}"
+REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task}"
 
 iteration="$(state_read_iteration)"
 

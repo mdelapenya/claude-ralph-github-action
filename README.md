@@ -75,12 +75,14 @@ jobs:
 | `base_branch` | No | `main` | Branch to create the PR against |
 | `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the worker can use |
 | `reviewer_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the reviewer can use |
+| `merge_strategy` | No | `pr` | Merge strategy: `pr` (create a pull request) or `squash-merge` (squash and push directly to default branch) |
+| `default_branch` | No | — | Default branch to merge into when using `squash-merge` strategy (auto-detected from repo if not specified) |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `pr_url` | URL of the created or updated pull request |
+| `pr_url` | URL of the created/updated pull request, or merge commit SHA when using `squash-merge` |
 | `iterations` | Number of work/review iterations completed |
 | `final_status` | `SHIPPED`, `MAX_ITERATIONS`, or `ERROR` |
 
@@ -116,6 +118,29 @@ If a PR already exists (on re-runs), the reviewer updates the title directly via
 ### Re-runs
 
 If the `ralph` label is removed and re-added, Ralph detects the existing branch, checks it out, and continues from where it left off. The worker receives a context file with the branch's commit history so it understands what was already done. New commits are added on top — Ralph never force-pushes.
+
+### Merge Strategies
+
+Ralph supports two merge strategies:
+
+#### `pr` (default)
+Creates or updates a pull request. The PR remains open for human review and must be manually merged. This is the recommended approach for most use cases.
+
+#### `squash-merge`
+When the reviewer approves (SHIP), Ralph squashes all commits into a single commit and pushes directly to the default branch. The issue is automatically closed. The commit message uses the PR title set by the reviewer (in conventional commits format).
+
+Example workflow configuration for squash-merge:
+
+```yaml
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    merge_strategy: squash-merge
+```
+
+**Note:** With `squash-merge`, if the reviewer requests revisions, max iterations is reached, or the squash-merge fails for any reason, Ralph falls back to creating a PR for human review.
+
+**Security consideration:** The `squash-merge` strategy pushes directly to the default branch, bypassing pull request reviews and any branch protection rules. Only use this for low-risk, well-scoped tasks where you trust the automated review process.
 
 ### Pull requests
 
