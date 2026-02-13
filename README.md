@@ -96,7 +96,7 @@ Ralph creates a `.ralph/` directory in the working tree (never committed to the 
 - **`pr-title.txt`** — PR title in conventional commits format (set by reviewer)
 - **`iteration.txt`** — Current iteration number
 
-The worker agent can read/write code but cannot create commits or PRs. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE.
+The worker agent merges the base branch (resolving any conflicts), implements the task, and commits changes directly. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE. If the worker makes no commits in an iteration, the loop continues to the next iteration with feedback instead of aborting.
 
 ### PR titles
 

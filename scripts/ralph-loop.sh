@@ -42,9 +42,9 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
 
   head_after="$(git rev-parse HEAD)"
   if [[ "${head_before}" == "${head_after}" ]]; then
-    echo "❌ Worker made no commits on iteration ${iteration}. Aborting."
-    state_write_final_status "ERROR"
-    exit 1
+    echo "⚠️  Worker made no commits on iteration ${iteration}. Continuing to next iteration."
+    state_write_review_feedback "You did not make any commits in the previous iteration. You MUST make code changes and commit them. Check for merge conflicts (look for conflict markers <<<<<<< in files) and resolve them. Then address the task requirements and commit your changes."
+    continue
   fi
 
   # --- REVIEW PHASE ---

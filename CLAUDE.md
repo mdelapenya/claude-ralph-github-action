@@ -12,15 +12,15 @@ The orchestration is entirely in bash. The flow is:
 
 **entrypoint.sh** -> extracts issue data, sets up git branch, initializes `.ralph/` state -> calls **ralph-loop.sh**
 
-**ralph-loop.sh** -> iterates: **worker.sh** (claude -p with worker prompt) -> commit changes -> **reviewer.sh** (claude -p with reviewer prompt) -> check SHIP/REVISE -> loop or exit
+**ralph-loop.sh** -> iterates: **worker.sh** (claude -p with worker prompt) -> check for commits -> **reviewer.sh** (claude -p with reviewer prompt) -> check SHIP/REVISE -> loop or exit. If the worker makes no commits, the loop continues to the next iteration with feedback instead of aborting.
 
-**state.sh** -> read/write helpers for `.ralph/` directory (task, iteration, review result, feedback, status). All state is committed to the branch for cross-run persistence.
+**state.sh** -> read/write helpers for `.ralph/` directory (task, iteration, review result, feedback, status). State lives in the working tree only and is never committed to the branch.
 
 **pr-manager.sh** -> creates/updates PR via `gh`, comments on the issue with results.
 
 **prompts/** -> system prompts appended to claude CLI calls. Worker gets `worker-system.md`, reviewer gets `reviewer-system.md`.
 
-Key design: the worker and reviewer are invoked via `claude -p` (print/non-interactive mode) with `--allowedTools` to sandbox capabilities. The reviewer can only read files, not modify source code.
+Key design: the worker and reviewer are invoked via `claude -p` (print/non-interactive mode) with `--allowedTools` to sandbox capabilities. The worker merges the base branch, resolves any conflicts, implements the task, and commits directly. The reviewer evaluates changes, runs tests/linters, and decides SHIP or REVISE.
 
 ## Build & Test
 
@@ -44,6 +44,6 @@ INPUT_WORKER_MODEL=haiku INPUT_MAX_ITERATIONS=1 ANTHROPIC_API_KEY=sk-... ./test/
 ## Conventions
 
 - All scripts use `set -euo pipefail` and are ShellCheck-clean at `--severity=warning`.
-- State is persisted in `.ralph/` files (plain text), committed to the branch after each phase.
+- State is persisted in `.ralph/` files (plain text) in the working tree only (never committed to the branch).
 - The `RALPH_VERBOSE` env var adds `--verbose` to claude CLI calls in worker.sh and reviewer.sh.
 - Environment variables prefixed `INPUT_` map to action.yml inputs (GitHub Actions convention).
