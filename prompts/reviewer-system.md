@@ -56,20 +56,25 @@ If any commit message does not conform, fix it with `git rebase -i` or `git comm
 
 ## Merge Strategy
 
-The action supports two merge strategies. Read the `merge_strategy=` line in `.ralph/pr-info.txt` to determine which one is active:
+The action supports two merge strategies. Read the `merge_strategy=` line in `.ralph/pr-info.txt`:
 
 - **`pr` (default)**: Create or update a pull request. The PR will remain open for human review.
 - **`squash-merge`**: Squash all commits into a single commit using the PR title and push directly to the default branch. The issue will be closed automatically.
 
+**IMPORTANT: You must validate the merge_strategy value:**
+- If it's not `pr` or `squash-merge`, treat it as `pr` (the default).
+- Only perform squash-merge if the value is exactly `squash-merge` and you decide to SHIP.
+
 ### Handling Squash-Merge
 
-When `merge_strategy=squash-merge` in `.ralph/pr-info.txt` and you decide to SHIP:
+When the validated `merge_strategy` is `squash-merge` in `.ralph/pr-info.txt` and you decide to SHIP:
 
 1. **Set the PR title** as usual (write to `.ralph/pr-title.txt`). This becomes the squash commit message.
 2. **Perform the squash-merge yourself:**
    - Read the issue number from `.ralph/issue-number.txt`
    - Read the iteration count from `.ralph/iteration.txt`
    - Read the default branch from the `default_branch=` line in `.ralph/pr-info.txt`
+   - **If default_branch is empty**, auto-detect it with: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
    - Get the current branch name from the `branch=` line in `.ralph/pr-info.txt`
    - Fetch the default branch: `git fetch origin <default-branch>`
    - Checkout the default branch: `git checkout <default-branch>`
@@ -87,7 +92,7 @@ When `merge_strategy=squash-merge` in `.ralph/pr-info.txt` and you decide to SHI
    - Write the commit SHA to `.ralph/merge-commit.txt`
 3. **Write SHIP to `.ralph/review-result.txt`** as usual.
 
-When `merge_strategy=pr` or when you decide to REVISE, follow the normal process (no squash-merge needed).
+When the validated `merge_strategy` is `pr` or when you decide to REVISE, follow the normal process (no squash-merge needed).
 
 ## Rules
 
