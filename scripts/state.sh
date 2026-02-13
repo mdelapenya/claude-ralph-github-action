@@ -101,13 +101,9 @@ state_read_final_status() {
   cat "${RALPH_DIR}/final-status.txt" 2>/dev/null || echo ""
 }
 
-# Commit all .ralph/ state files
-# Args: $1 = commit message
+# No-op: state lives in the working tree only, never committed to the branch.
+# Kept as a function so callers don't break.
+# Args: $1 = commit message (ignored)
 state_commit() {
-  local msg="$1"
-  git add "${RALPH_DIR}/"
-  # Only commit if there are staged changes
-  if ! git diff --cached --quiet; then
-    git commit -m "${msg}"
-  fi
+  :
 }

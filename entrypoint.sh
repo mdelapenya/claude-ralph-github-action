@@ -96,7 +96,7 @@ echo "🏁 === Ralph Loop Finished: ${final_status} (${iteration} iterations) ==
 # --- Push branch ---
 echo ""
 echo "⬆️  Pushing branch ${BRANCH_NAME}..."
-git push --force-with-lease origin "${BRANCH_NAME}"
+git push origin "${BRANCH_NAME}"
 
 # --- Create or update PR ---
 echo ""
