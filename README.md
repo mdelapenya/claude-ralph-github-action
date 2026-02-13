@@ -56,8 +56,8 @@ jobs:
 | `max_turns_reviewer` | No | `10` | Maximum agentic turns per reviewer invocation |
 | `trigger_label` | No | `ralph` | Issue label that triggers the loop |
 | `base_branch` | No | `main` | Branch to create the PR against |
-| `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep` | Comma-separated tools the worker can use |
-| `reviewer_tools` | No | `Read,Glob,Grep,Write` | Comma-separated tools the reviewer can use |
+| `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the worker can use |
+| `reviewer_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the reviewer can use |
 
 ## Outputs
 

@@ -79,8 +79,8 @@ docker run --rm \
   -e INPUT_MAX_ITERATIONS="${INPUT_MAX_ITERATIONS:-2}" \
   -e INPUT_MAX_TURNS_WORKER="${INPUT_MAX_TURNS_WORKER:-30}" \
   -e INPUT_MAX_TURNS_REVIEWER="${INPUT_MAX_TURNS_REVIEWER:-10}" \
-  -e INPUT_WORKER_ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep" \
-  -e INPUT_REVIEWER_TOOLS="Read,Glob,Grep,Write" \
+  -e INPUT_WORKER_ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task" \
+  -e INPUT_REVIEWER_TOOLS="Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task" \
   -e RALPH_VERBOSE="${RALPH_VERBOSE:-true}" \
   -v "${REPO_ROOT}/test/event.json:/tmp/event.json:ro" \
   -v "${TMPDIR}:/workspace" \

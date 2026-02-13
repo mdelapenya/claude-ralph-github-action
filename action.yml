@@ -45,11 +45,11 @@ inputs:
   worker_allowed_tools:
     description: 'Comma-separated tools the worker can use'
     required: false
-    default: 'Bash,Read,Write,Edit,Glob,Grep'
+    default: 'Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task'
   reviewer_tools:
     description: 'Comma-separated tools the reviewer can use'
     required: false
-    default: 'Read,Glob,Grep,Write'
+    default: 'Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task'
 
 outputs:
   pr_url:
