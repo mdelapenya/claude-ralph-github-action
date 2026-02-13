@@ -38,20 +38,28 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 WORKSPACE="${GITHUB_WORKSPACE}"
 cd "${WORKSPACE}"
 
+# Track branch state for worker context
+MERGE_CONFLICTS=""
+BRANCH_LOG=""
+IS_CONTINUATION="false"
+
 # Check if the ralph branch already exists on the remote
 if git ls-remote --heads origin "${BRANCH_NAME}" | grep -q "${BRANCH_NAME}"; then
+  IS_CONTINUATION="true"
   echo "🔄 Branch ${BRANCH_NAME} exists, checking out and merging base..."
   git fetch origin "${BRANCH_NAME}"
   git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-  # Merge base branch to pick up any new changes
+
+  # Capture what's been done on this branch so far
   git fetch origin "${BASE_BRANCH}"
-  git merge "origin/${BASE_BRANCH}" --no-edit || {
-    echo "⚠️  Merge conflict with ${BASE_BRANCH}. Attempting to continue."
+  BRANCH_LOG="$(git --no-pager log --oneline "origin/${BASE_BRANCH}..HEAD" 2>/dev/null || echo "")"
+
+  # Try to merge base branch; if conflicts, abort and let the worker handle it
+  if ! git merge "origin/${BASE_BRANCH}" --no-edit 2>/dev/null; then
+    MERGE_CONFLICTS="$(git diff --name-only --diff-filter=U 2>/dev/null || echo "")"
+    echo "⚠️  Merge conflicts detected, delegating to worker agent."
     git merge --abort 2>/dev/null || true
-    # Reset to base and re-apply; this is a simplification
-    echo "🔁 Resetting to base branch and re-running from scratch."
-    git reset --hard "origin/${BASE_BRANCH}"
-  }
+  fi
 else
   echo "🌱 Creating new branch ${BRANCH_NAME} from ${BASE_BRANCH}..."
   git checkout -B "${BRANCH_NAME}" "origin/${BASE_BRANCH}"
@@ -61,14 +69,36 @@ fi
 state_init
 state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
 state_write_issue_number "${ISSUE_NUMBER}"
+state_write_iteration "0"
 
-# Preserve iteration count from previous runs (cross-run persistence)
-current_iteration="$(state_read_iteration)"
-if [[ -z "${current_iteration}" || "${current_iteration}" == "0" ]]; then
-  state_write_iteration "0"
-fi
-
-state_commit "ralph: initialize state for issue #${ISSUE_NUMBER}"
+# --- Write context for the worker agent ---
+{
+  echo "# Branch Context"
+  echo ""
+  if [[ "${IS_CONTINUATION}" == "true" ]]; then
+    echo "This is a **continuation** of previous work on this issue."
+    echo ""
+    if [[ -n "${BRANCH_LOG}" ]]; then
+      echo "## Previous commits on this branch"
+      echo '```'
+      echo "${BRANCH_LOG}"
+      echo '```'
+      echo ""
+    fi
+    if [[ -n "${MERGE_CONFLICTS}" ]]; then
+      echo "## Merge conflicts with ${BASE_BRANCH}"
+      echo ""
+      echo "The following files have conflicts with \`${BASE_BRANCH}\` that you must resolve:"
+      echo '```'
+      echo "${MERGE_CONFLICTS}"
+      echo '```'
+      echo ""
+      echo "Merge the changes from \`${BASE_BRANCH}\` manually into these files."
+    fi
+  else
+    echo "This is a **fresh start** — no previous work exists for this issue."
+  fi
+} > "${RALPH_DIR}/context.md"
 
 # --- Run the Ralph loop ---
 echo ""

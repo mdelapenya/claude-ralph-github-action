@@ -20,6 +20,7 @@ feedback="$(state_read_review_feedback)"
 # Build the worker prompt
 prompt="You are on iteration ${iteration} of a Ralph loop. Work on the task."
 prompt+=$'\n\n'"Read .ralph/task.md for the task description."
+prompt+=$'\n\n'"Read .ralph/context.md for branch context (whether this is a fresh start or continuation of previous work, and any merge conflicts to resolve)."
 
 if [[ -n "${feedback}" && "${iteration}" -gt 1 ]]; then
   prompt+=$'\n\n'"IMPORTANT: The reviewer provided feedback on your previous iteration. Read .ralph/review-feedback.txt and address it as your highest priority."
