@@ -15,6 +15,61 @@ SCRIPTS_DIR="${SCRIPTS_DIR:-/scripts}"
 source "${SCRIPTS_DIR}/state.sh"
 source "${SCRIPTS_DIR}/pr-manager.sh"
 
+# --- Early input validation ---
+# Check ANTHROPIC_API_KEY
+if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+  echo "❌ Error: ANTHROPIC_API_KEY environment variable is not set or is empty"
+  echo "   Fix: Set ANTHROPIC_API_KEY to a valid Anthropic API key"
+  exit 1
+fi
+
+# Check GITHUB_EVENT_PATH
+if [[ -z "${GITHUB_EVENT_PATH:-}" ]]; then
+  echo "❌ Error: GITHUB_EVENT_PATH environment variable is not set"
+  echo "   Fix: This action must run in a GitHub Actions workflow context"
+  exit 1
+fi
+
+if [[ ! -f "${GITHUB_EVENT_PATH}" ]]; then
+  echo "❌ Error: GITHUB_EVENT_PATH does not point to an existing file: ${GITHUB_EVENT_PATH}"
+  echo "   Fix: Ensure the GitHub event file exists at the specified path"
+  exit 1
+fi
+
+# Check GITHUB_WORKSPACE
+if [[ -z "${GITHUB_WORKSPACE:-}" ]]; then
+  echo "❌ Error: GITHUB_WORKSPACE environment variable is not set"
+  echo "   Fix: This action must run in a GitHub Actions workflow context"
+  exit 1
+fi
+
+if [[ ! -d "${GITHUB_WORKSPACE}" ]]; then
+  echo "❌ Error: GITHUB_WORKSPACE is not a directory: ${GITHUB_WORKSPACE}"
+  echo "   Fix: Ensure GITHUB_WORKSPACE points to a valid directory"
+  exit 1
+fi
+
+# Check jq availability
+if ! command -v jq &> /dev/null; then
+  echo "❌ Error: jq command not found on PATH"
+  echo "   Fix: Install jq in the Docker image or runner environment"
+  exit 1
+fi
+
+# Check issue number from event file
+TEMP_ISSUE_NUMBER="$(jq -r '.issue.number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")"
+if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
+  echo "❌ Error: Event file does not contain a valid issue number"
+  echo "   Fix: Ensure this action is triggered by an issue event"
+  exit 1
+fi
+
+if ! [[ "${TEMP_ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
+  echo "❌ Error: Issue number is not numeric: ${TEMP_ISSUE_NUMBER}"
+  echo "   Fix: Ensure the event file contains a valid issue.number field"
+  exit 1
+fi
+
 # --- Extract issue data from GitHub event ---
 EVENT_PATH="${GITHUB_EVENT_PATH}"
 ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
