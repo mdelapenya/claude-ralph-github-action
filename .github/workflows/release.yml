@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-major-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse major version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          MAJOR="$(echo "${TAG}" | grep -oE '^v[0-9]+' || true)"
+          if [[ -z "${MAJOR}" ]]; then
+            echo "::error::Tag ${TAG} does not match vX.Y.Z format"
+            exit 1
+          fi
+          echo "major=${MAJOR}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update major version tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${{ steps.version.outputs.major }}" -m "Update ${{ steps.version.outputs.major }} to ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.major }}" --force
