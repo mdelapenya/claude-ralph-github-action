@@ -82,7 +82,7 @@ jobs:
 
 | Output | Description |
 |--------|-------------|
-| `pr_url` | URL of the created or updated pull request |
+| `pr_url` | URL of the created/updated pull request, or merge commit SHA when using `squash-merge` |
 | `iterations` | Number of work/review iterations completed |
 | `final_status` | `SHIPPED`, `MAX_ITERATIONS`, or `ERROR` |
 
@@ -138,7 +138,9 @@ Example workflow configuration for squash-merge:
     merge_strategy: squash-merge
 ```
 
-**Note:** With `squash-merge`, if the reviewer requests revisions or max iterations is reached, Ralph falls back to creating a PR for human review.
+**Note:** With `squash-merge`, if the reviewer requests revisions, max iterations is reached, or the squash-merge fails for any reason, Ralph falls back to creating a PR for human review.
+
+**Security consideration:** The `squash-merge` strategy pushes directly to the default branch, bypassing pull request reviews and any branch protection rules. Only use this for low-risk, well-scoped tasks where you trust the automated review process.
 
 ### Pull requests
 

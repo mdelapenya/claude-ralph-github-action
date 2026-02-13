@@ -77,19 +77,24 @@ When the validated `merge_strategy` is `squash-merge` in `.ralph/pr-info.txt` an
    - **If default_branch is empty**, auto-detect it with: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
    - Get the current branch name from the `branch=` line in `.ralph/pr-info.txt`
    - Fetch the default branch: `git fetch origin <default-branch>`
-   - Checkout the default branch: `git checkout <default-branch>`
+   - Reset to the remote ref to ensure you're up to date: `git checkout -B <default-branch> origin/<default-branch>`
    - Squash merge the working branch: `git merge --squash <working-branch>`
-   - Commit with the PR title and a reference to the issue:
-     ```
+   - If the squash merge produces conflicts, resolve them (keeping both sides' changes), then `git add` the resolved files.
+   - Commit using a heredoc for the multi-line message:
+     ```bash
+     git commit -m "$(cat <<'EOF'
      <pr-title>
 
      Closes #<issue-number>
 
      Squash-merged by Ralph after <iteration> iteration(s).
+     EOF
+     )"
      ```
    - Get the commit SHA: `git rev-parse HEAD`
    - Push to origin: `git push origin <default-branch>`
    - Write the commit SHA to `.ralph/merge-commit.txt`
+   - If any step fails (conflict resolution, push rejected, etc.), skip the squash-merge entirely — do NOT write `merge-commit.txt`. The orchestration will fall back to creating a PR.
 3. **Write SHIP to `.ralph/review-result.txt`** as usual.
 
 When the validated `merge_strategy` is `pr` or when you decide to REVISE, follow the normal process (no squash-merge needed).
@@ -98,6 +103,6 @@ When the validated `merge_strategy` is `pr` or when you decide to REVISE, follow
 
 - **Do NOT modify any source code.** You are a reviewer, not a developer.
 - You **may** create git commits for: amending/rewriting commit messages, and any changes to `.ralph/` state files.
-- Only write to `.ralph/review-result.txt`, `.ralph/review-feedback.txt`, and `.ralph/pr-title.txt`.
+- Only write to `.ralph/review-result.txt`, `.ralph/review-feedback.txt`, `.ralph/pr-title.txt`, and `.ralph/merge-commit.txt` (squash-merge only).
 - **Do NOT stage or commit files in the `.ralph/` directory.**
 - Be pragmatic: if the implementation is good enough and meets the core requirements, SHIP it. Don't block on style preferences or minor improvements.

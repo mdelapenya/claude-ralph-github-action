@@ -117,14 +117,31 @@ state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_iteration "0"
 
+# --- Determine merge strategy early (needed for pr-info.txt) ---
+MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
+if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
+  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
+  MERGE_STRATEGY="pr"
+fi
+
+DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH:-}"
+if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
+  echo "🔍 Auto-detecting default branch..."
+  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "")"
+  if [[ -z "${DEFAULT_BRANCH}" ]]; then
+    echo "❌ Error: Could not auto-detect default branch. Set the 'default_branch' input explicitly."
+    exit 1
+  fi
+  echo "   Detected: ${DEFAULT_BRANCH}"
+fi
+
 # --- Write PR info for the reviewer agent ---
-# Reviewer will validate merge_strategy and auto-detect default_branch if needed
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
-  echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
-  echo "default_branch=${INPUT_DEFAULT_BRANCH:-}"
+  echo "merge_strategy=${MERGE_STRATEGY}"
+  echo "default_branch=${DEFAULT_BRANCH}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
   if [[ -n "${existing_pr_number}" ]]; then
@@ -188,25 +205,27 @@ git push origin "${BRANCH_NAME}"
 
 # --- Handle merge strategy ---
 pr_url_or_sha=""
-MERGE_STRATEGY="pr"  # default
 
-# Check if the reviewer performed a squash-merge
+# Derive effective strategy from what actually happened, not the input.
+# If the reviewer produced a merge commit, it's a squash-merge regardless of config.
+# If not, fall back to PR even if squash-merge was requested.
+effective_strategy="pr"
+
 if [[ -f ".ralph/merge-commit.txt" ]]; then
-  # Reviewer already performed squash-merge
-  MERGE_STRATEGY="squash-merge"
   pr_url_or_sha="$(cat .ralph/merge-commit.txt)"
-  echo ""
-  echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
-
-  # Close the issue since we've merged to default branch
   if [[ -n "${pr_url_or_sha}" ]]; then
+    effective_strategy="squash-merge"
+    echo ""
+    echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
+
     echo "🔒 Closing issue #${ISSUE_NUMBER}..."
-    gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" --comment "Closed by squash-merge commit ${pr_url_or_sha}" || {
+    gh issue close "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --comment "Closed by squash-merge commit ${pr_url_or_sha}" || {
       echo "⚠️  Failed to close issue"
     }
   fi
-else
-  # Create or update PR (default behavior)
+fi
+
+if [[ "${effective_strategy}" == "pr" ]]; then
   echo ""
   echo "🔀 Managing pull request..."
   pr_url_or_sha="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {
@@ -223,7 +242,7 @@ fi
 # --- Comment on issue ---
 echo ""
 echo "💬 Commenting on issue #${ISSUE_NUMBER}..."
-issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${MERGE_STRATEGY}" || {
+issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${effective_strategy}" || {
   echo "⚠️  Issue comment failed"
 }
 
@@ -236,7 +255,7 @@ issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${MERGE_ST
 
 echo ""
 echo "✅ === Done ==="
-if [[ "${MERGE_STRATEGY}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
+if [[ "${effective_strategy}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
   echo "🔗 Commit: ${pr_url_or_sha}"
 else
   echo "🔗 PR: ${pr_url_or_sha}"

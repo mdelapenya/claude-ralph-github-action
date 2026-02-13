@@ -61,7 +61,7 @@ inputs:
 
 outputs:
   pr_url:
-    description: 'URL of the created or updated pull request'
+    description: 'URL of the created/updated pull request, or the merge commit SHA when using squash-merge strategy'
   iterations:
     description: 'Number of work/review iterations completed'
   final_status:
