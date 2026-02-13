@@ -40,23 +40,8 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
     exit 1
   fi
 
-  # Commit worker changes (code only, exclude .ralph/ state)
-  git add -A -- ':!.ralph'
-  if ! git diff --cached --quiet; then
-    # Try to extract conventional commit message from work summary
-    commit_msg="chore(ralph): apply changes from iteration ${iteration}"
-    if [[ -f ".ralph/work-summary.txt" ]]; then
-      first_line=""
-      first_line="$(head -n 1 .ralph/work-summary.txt)"
-      # Check if first line matches conventional commit pattern (type(scope): description or type: description)
-      if echo "${first_line}" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+'; then
-        commit_msg="${first_line}"
-      fi
-    fi
-    git commit -m "${commit_msg}"
-  else
-    echo "WARNING: Worker made no changes on iteration ${iteration}"
-  fi
+  # Worker now creates its own commits using conventional commit format
+  # No need to commit here - worker handles it
 
   # --- REVIEW PHASE ---
   echo ""

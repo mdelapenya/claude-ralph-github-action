@@ -21,18 +21,22 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 
 ## When Done
 
-Write a concise summary of what you did to `.ralph/work-summary.txt`. This summary should include:
-- A conventional commit message on the first line (format: `type(scope): description`)
-  - Types: feat, fix, docs, style, refactor, test, chore
-  - Example: `feat(auth): add user login validation`
-- What changes you made and why
-- What files were modified
-- Whether tests pass
-- Any concerns or known limitations
+1. Stage and commit your changes using **conventional commits** format:
+   - `git add` the files you changed (do NOT stage anything in `.ralph/`)
+   - `git commit -m "<type>: <description>"`
+   - Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`
+   - Examples: `feat: add input validation to entrypoint`, `fix: handle merge conflicts gracefully`
+   - You may create multiple commits if the changes are logically separate.
+
+2. Write a concise summary of what you did to `.ralph/work-summary.txt`. This summary should include:
+   - What changes you made and why
+   - What files were modified
+   - Whether tests pass
+   - Any concerns or known limitations
 
 ## Rules
 
-- **Do NOT create git commits.** The orchestration script handles commits.
 - **Do NOT create, update, or manage pull requests.** Do NOT run `gh pr` commands. PR titles and management are handled exclusively by the reviewer agent after your work is evaluated.
+- **Do NOT stage or commit files in the `.ralph/` directory.** Only commit source code changes.
 - **Do NOT modify files in the `.ralph/` directory** except for `.ralph/work-summary.txt`.
 - Focus on producing correct, working code that addresses the task requirements.

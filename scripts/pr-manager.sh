@@ -34,14 +34,15 @@ pr_create_or_update() {
     ERROR)        status_suffix=" [ERROR]" ;;
   esac
 
-  # Try to extract conventional commit message from work summary first line
+  # Extract conventional commit message from the most recent non-ralph commit
   local pr_title=""
-  if [[ -n "${work_summary}" ]]; then
-    local first_line
-    first_line="$(echo "${work_summary}" | head -n 1)"
-    # Check if first line matches conventional commit pattern
-    if echo "${first_line}" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+'; then
-      pr_title="${first_line}${status_suffix}"
+  local recent_commit
+  recent_commit="$(git log --format=%s --no-merges --grep='^ralph:' --invert-grep -1 2>/dev/null || echo "")"
+
+  if [[ -n "${recent_commit}" ]]; then
+    # Check if the commit message matches conventional commit pattern
+    if echo "${recent_commit}" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+'; then
+      pr_title="${recent_commit}${status_suffix}"
     fi
   fi
 
