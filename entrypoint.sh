@@ -131,6 +131,13 @@ state_write_iteration "0"
   fi
 } > "${RALPH_DIR}/pr-info.txt"
 
+# --- Comment on issue to indicate start ---
+echo ""
+echo "💬 Commenting on issue #${ISSUE_NUMBER} (start)..."
+issue_comment_start "${ISSUE_NUMBER}" || {
+  echo "⚠️  Initial issue comment failed (continuing anyway)"
+}
+
 # --- Run the Ralph loop ---
 echo ""
 echo "🔁 === Starting Ralph Loop ==="
