@@ -20,7 +20,7 @@ name: Ralph Loop
 
 on:
   issues:
-    types: [labeled]
+    types: [labeled, edited]
   pull_request:
     types: [labeled]
 
@@ -43,7 +43,9 @@ jobs:
             --body "🤖 **Ralph** can only work on issues, not pull requests. Please create an issue and label it with \`ralph\` instead."
 
   ralph:
-    if: github.event_name == 'issues' && github.event.label.name == 'ralph'
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
+      (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -115,9 +117,13 @@ Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
 If a PR already exists (on re-runs), the reviewer updates the title directly via `gh pr edit`. On the first run, the reviewer writes the title to `.ralph/pr-title.txt` and the orchestration uses it when creating the PR.
 
-### Re-runs
+### Re-runs and Issue Edits
 
-If the `ralph` label is removed and re-added, Ralph detects the existing branch, checks it out, and continues from where it left off. The worker receives a context file with the branch's commit history so it understands what was already done. New commits are added on top — Ralph never force-pushes.
+Ralph triggers in two ways:
+- **Label added:** When the `ralph` label is added to an issue (first run or re-trigger by removing and re-adding the label).
+- **Issue edited:** When an issue that already has the `ralph` label is edited (title or body changed). This lets you refine requirements and have Ralph re-process the updated task.
+
+In both cases, Ralph detects the existing branch if one exists, checks it out, and continues from where it left off. The worker re-reads the task from the issue (which may have changed) and the branch's commit history to understand what was already done. New commits are added on top — Ralph never force-pushes.
 
 ### Merge Strategies
 
