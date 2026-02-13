@@ -27,16 +27,33 @@ pr_create_or_update() {
   local review_feedback
   review_feedback="$(state_read_review_feedback)"
 
-  # Determine PR title prefix based on status
-  local status_prefix
+  # Infer conventional commit type from issue title
+  local commit_type="chore"
+  local lowercase_title
+  lowercase_title="$(echo "${issue_title}" | tr '[:upper:]' '[:lower:]')"
+
+  if echo "${lowercase_title}" | grep -qE '^(add|implement|create|new)'; then
+    commit_type="feat"
+  elif echo "${lowercase_title}" | grep -qE '^(fix|resolve|correct|repair)'; then
+    commit_type="fix"
+  elif echo "${lowercase_title}" | grep -qE '^(update|modify|change|improve|enhance)'; then
+    commit_type="chore"
+  elif echo "${lowercase_title}" | grep -qE '^(refactor|restructure|reorganize)'; then
+    commit_type="refactor"
+  elif echo "${lowercase_title}" | grep -qE '^(doc|document)'; then
+    commit_type="docs"
+  elif echo "${lowercase_title}" | grep -qE '^(test)'; then
+    commit_type="test"
+  fi
+
+  # Determine status suffix based on status
+  local status_suffix=""
   case "${final_status}" in
-    SHIPPED)      status_prefix="[READY]" ;;
-    MAX_ITERATIONS) status_prefix="[NEEDS REVIEW]" ;;
-    ERROR)        status_prefix="[ERROR]" ;;
-    *)            status_prefix="[WIP]" ;;
+    MAX_ITERATIONS) status_suffix=" [NEEDS REVIEW]" ;;
+    ERROR)        status_suffix=" [ERROR]" ;;
   esac
 
-  local pr_title="${status_prefix} ${issue_title}"
+  local pr_title="${commit_type}: ${issue_title}${status_suffix}"
 
   # Build PR body
   local pr_body
