@@ -9,6 +9,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/state.sh"
 
+REPO="${GITHUB_REPOSITORY}"
+
 # Create or update a pull request for the Ralph branch.
 # Args: $1 = branch name, $2 = base branch, $3 = issue number,
 #       $4 = issue title, $5 = final status
@@ -27,16 +29,13 @@ pr_create_or_update() {
   local review_feedback
   review_feedback="$(state_read_review_feedback)"
 
-  # Determine PR title prefix based on status
-  local status_prefix
-  case "${final_status}" in
-    SHIPPED)      status_prefix="[READY]" ;;
-    MAX_ITERATIONS) status_prefix="[NEEDS REVIEW]" ;;
-    ERROR)        status_prefix="[ERROR]" ;;
-    *)            status_prefix="[WIP]" ;;
-  esac
-
-  local pr_title="${status_prefix} ${issue_title}"
+  # Use the reviewer's PR title if available, otherwise fall back to issue title
+  local pr_title
+  if [[ -f ".ralph/pr-title.txt" ]]; then
+    pr_title="$(cat .ralph/pr-title.txt)"
+  else
+    pr_title="feat: ${issue_title}"
+  fi
 
   # Build PR body
   local pr_body
@@ -63,17 +62,17 @@ EOF
 
   # Check if PR already exists for this branch
   local existing_pr
-  existing_pr="$(gh pr list --head "${branch}" --base "${base_branch}" --json url --jq '.[0].url' 2>/dev/null || echo "")"
+  existing_pr="$(gh pr list --repo "${REPO}" --head "${branch}" --base "${base_branch}" --json url --jq '.[0].url' || echo "")"
 
   if [[ -n "${existing_pr}" ]]; then
     echo "Updating existing PR: ${existing_pr}"
-    gh pr edit "${existing_pr}" \
+    gh pr edit "${existing_pr}" --repo "${REPO}" \
       --title "${pr_title}" \
       --body "${pr_body}"
     echo "${existing_pr}"
   else
     echo "Creating new PR..."
-    gh pr create \
+    gh pr create --repo "${REPO}" \
       --head "${branch}" \
       --base "${base_branch}" \
       --title "${pr_title}" \
@@ -133,5 +132,5 @@ EOF
       ;;
   esac
 
-  gh issue comment "${issue_number}" --body "${comment}"
+  gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
 }

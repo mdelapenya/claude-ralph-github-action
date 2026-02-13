@@ -69,15 +69,33 @@ jobs:
 
 ## How It Works
 
-Ralph creates a `.ralph/` directory on the working branch to persist state across iterations:
+Ralph creates a `.ralph/` directory in the working tree (never committed to the branch) to pass state between agents:
 
 - **`task.md`** — The issue title and body
+- **`context.md`** — Branch context: fresh start vs continuation, previous commits, merge conflicts
+- **`pr-info.txt`** — Repo, branch, issue title, and existing PR number (if any)
 - **`work-summary.txt`** — Worker's summary of changes made
 - **`review-result.txt`** — `SHIP` or `REVISE`
 - **`review-feedback.txt`** — Reviewer's feedback for the next iteration
+- **`pr-title.txt`** — PR title in conventional commits format (set by reviewer)
 - **`iteration.txt`** — Current iteration number
 
-The worker agent can read/write code but cannot create commits or PRs. The reviewer agent can only read files and write its verdict. The orchestration scripts handle git operations, PR management, and issue comments.
+The worker agent can read/write code but cannot create commits or PRs. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE.
+
+### PR titles
+
+PR titles follow [conventional commits](https://www.conventionalcommits.org/) format. The **reviewer** agent infers the type from the changes and sets the title:
+
+```
+feat: add input validation to entrypoint
+fix: resolve git safe directory error
+chore: update dependencies
+refactor: simplify state management
+```
+
+Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
+
+If a PR already exists (on re-runs), the reviewer updates the title directly via `gh pr edit`. On the first run, the reviewer writes the title to `.ralph/pr-title.txt` and the orchestration uses it when creating the PR.
 
 ### Re-runs
 

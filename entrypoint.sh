@@ -163,6 +163,20 @@ state_write_iteration "0"
   fi
 } > "${RALPH_DIR}/context.md"
 
+# --- Write PR info for the reviewer agent ---
+{
+  echo "repo=${GITHUB_REPOSITORY}"
+  echo "branch=${BRANCH_NAME}"
+  echo "issue_title=${ISSUE_TITLE}"
+  # Check if a PR already exists for this branch
+  existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
+  if [[ -n "${existing_pr_number}" ]]; then
+    echo "pr_number=${existing_pr_number}"
+  else
+    echo "pr_number="
+  fi
+} > "${RALPH_DIR}/pr-info.txt"
+
 # --- Run the Ralph loop ---
 echo ""
 echo "🔁 === Starting Ralph Loop ==="

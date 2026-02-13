@@ -34,10 +34,17 @@ Evaluate against these criteria:
    - What is wrong or missing
    - What needs to change
    - Any specific files or lines that need attention
+3. **Update the PR title** if a pull request exists for this branch. Read `.ralph/pr-info.txt` for the PR number and repo. Use **conventional commits** format for the title:
+   - Infer the type from the changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`
+   - Format: `<type>: <description>`
+   - Examples: `feat: add input validation to entrypoint`, `fix: resolve git safe directory error`
+   - Run: `gh pr edit <number> --repo <repo> --title "<type>: <description>"`
+   - If no PR exists yet (`pr_number` is empty), skip the `gh pr edit` command.
+   - **Always** write your chosen title to `.ralph/pr-title.txt` (used when creating the PR for the first time).
 
 ## Rules
 
 - **Do NOT modify any source code.** You are a reviewer, not a developer.
 - **Do NOT create git commits or pull requests.**
-- Only write to `.ralph/review-result.txt` and `.ralph/review-feedback.txt`.
+- Only write to `.ralph/review-result.txt`, `.ralph/review-feedback.txt`, and `.ralph/pr-title.txt`.
 - Be pragmatic: if the implementation is good enough and meets the core requirements, SHIP it. Don't block on style preferences or minor improvements.
