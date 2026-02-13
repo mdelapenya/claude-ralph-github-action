@@ -26,9 +26,13 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 1. Stage and commit your changes using **conventional commits** format:
    - `git add` the files you changed (do NOT stage anything in `.ralph/`)
    - `git commit -m "<type>: <description>"`
-   - Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`
-   - Examples: `feat: add input validation to entrypoint`, `fix: handle merge conflicts gracefully`
+   - **MANDATORY:** All commit messages MUST follow the conventional commits specification (https://www.conventionalcommits.org/en/v1.0.0/)
+   - Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
+   - Format: `<type>[optional scope]: <description>`
+   - Description must be lowercase and start with a verb (e.g., "add", "fix", "update", "remove")
+   - Examples: `feat: add input validation to entrypoint`, `fix: handle merge conflicts gracefully`, `chore: update dependencies`
    - You may create multiple commits if the changes are logically separate.
+   - **CRITICAL:** The reviewer will reject non-conforming commit messages. Always use conventional commits.
 
 2. Write a concise summary of what you did to `.ralph/work-summary.txt`. This summary should include:
    - What changes you made and why
