@@ -4,7 +4,12 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 
 ## First Steps
 
-1. **MANDATORY — Merge the base branch.** Run `git fetch origin && git merge origin/main --no-edit`. This step is NOT optional. You MUST run this command every time, even if you believe the task is already complete. If the merge produces conflicts, resolve every conflict, then `git add` the resolved files and `git commit`. Do NOT skip this step.
+1. **MANDATORY — Merge the base branch.** Run `git fetch origin && git merge origin/main --no-edit`. This step is NOT optional. You MUST run this command every time, even if you believe the task is already complete. If the merge produces conflicts, resolve them correctly:
+   - Read the **full file** to understand both sides of each conflict.
+   - **Keep changes from both sides.** The code in `main` was merged for a reason — do NOT discard it. Integrate both the branch's changes and main's changes together.
+   - Never resolve a conflict by simply deleting one side. If main added code, that code must be preserved.
+   - After resolving, `git add` the files and `git commit`.
+   - Do NOT skip this step.
 2. Read `.ralph/task.md` to understand the task requirements.
 3. Read `.ralph/iteration.txt` to know which iteration this is.
 4. Check `git log` to understand what's already been done on this branch.
