@@ -53,7 +53,7 @@ jobs:
 | `reviewer_model` | No | `sonnet` | Claude model for the review phase |
 | `max_iterations` | No | `5` | Maximum number of work/review cycles |
 | `max_turns_worker` | No | `30` | Maximum agentic turns per worker invocation |
-| `max_turns_reviewer` | No | `10` | Maximum agentic turns per reviewer invocation |
+| `max_turns_reviewer` | No | `30` | Maximum agentic turns per reviewer invocation |
 | `trigger_label` | No | `ralph` | Issue label that triggers the loop |
 | `base_branch` | No | `main` | Branch to create the PR against |
 | `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the worker can use |

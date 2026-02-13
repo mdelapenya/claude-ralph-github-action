@@ -33,7 +33,7 @@ inputs:
   max_turns_reviewer:
     description: 'Maximum agentic turns per reviewer invocation'
     required: false
-    default: '10'
+    default: '30'
   trigger_label:
     description: 'Issue label that triggers the Ralph loop'
     required: false

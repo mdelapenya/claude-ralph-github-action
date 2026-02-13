@@ -30,6 +30,6 @@ Write a concise summary of what you did to `.ralph/work-summary.txt`. This summa
 ## Rules
 
 - **Do NOT create git commits.** The orchestration script handles commits.
-- **Do NOT create or manage pull requests.** The orchestration handles PRs.
+- **Do NOT create, update, or manage pull requests.** Do NOT run `gh pr` commands. PR titles and management are handled exclusively by the reviewer agent after your work is evaluated.
 - **Do NOT modify files in the `.ralph/` directory** except for `.ralph/work-summary.txt`.
 - Focus on producing correct, working code that addresses the task requirements.

@@ -26,7 +26,7 @@ jobs:
           # Optional: adjust iteration limits
           # max_iterations: 5
           # max_turns_worker: 30
-          # max_turns_reviewer: 10
+          # max_turns_reviewer: 30
           # Optional: change trigger label
           # trigger_label: 'ralph'
           # Optional: change base branch
