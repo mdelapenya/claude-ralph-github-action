@@ -29,7 +29,13 @@ Evaluate against these criteria:
 
 ## Commit Messages
 
-Review the commit messages on this branch (`git --no-pager log --oneline origin/main..HEAD`). They must use **conventional commits** format (`<type>: <description>`). If any commit message is wrong or unclear, fix it with `git rebase -x` or `git commit --amend` as appropriate. This is part of your review — bad commit messages are a reason to REVISE if you cannot fix them yourself.
+Review the commit messages on this branch (`git --no-pager log --oneline origin/main..HEAD`). They **MUST** use **conventional commits** format per https://www.conventionalcommits.org/en/v1.0.0/. Each commit message must:
+- Follow the format: `<type>[optional scope]: <description>`
+- Use valid types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
+- Have a lowercase description starting with a verb
+- Be clear and concise
+
+If any commit message does not conform, fix it with `git rebase -i` or `git commit --amend` as appropriate. This is **mandatory** — non-conforming commit messages are a reason to REVISE if you cannot fix them yourself.
 
 ## When Done
 
@@ -38,13 +44,15 @@ Review the commit messages on this branch (`git --no-pager log --oneline origin/
    - What is wrong or missing
    - What needs to change
    - Any specific files or lines that need attention
-3. **Update the PR title** if a pull request exists for this branch. Read `.ralph/pr-info.txt` for the PR number and repo. Use **conventional commits** format for the title:
-   - Infer the type from the changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`
+3. **Set the PR title using conventional commits format** (https://www.conventionalcommits.org/en/v1.0.0/):
+   - **MANDATORY:** The PR title MUST follow conventional commits format: `<type>[optional scope]: <description>`
+   - Infer the type from the changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
+   - Description must be lowercase and start with a verb
    - Format: `<type>: <description>`
-   - Examples: `feat: add input validation to entrypoint`, `fix: resolve git safe directory error`
-   - Run: `gh pr edit <number> --repo <repo> --title "<type>: <description>"`
-   - If no PR exists yet (`pr_number` is empty), skip the `gh pr edit` command.
-   - **Always** write your chosen title to `.ralph/pr-title.txt` (used when creating the PR for the first time).
+   - Examples: `feat: add input validation to entrypoint`, `fix: resolve git safe directory error`, `chore: update dependencies`
+   - **ALWAYS** write your chosen title to `.ralph/pr-title.txt` (this file is used when creating the PR)
+   - If a PR already exists, read `.ralph/pr-info.txt` for the PR number and repo, then update it: `gh pr edit <number> --repo <repo> --title "<type>: <description>"`
+   - If no PR exists yet (`pr_number` is empty in pr-info.txt), skip the `gh pr edit` command but still write to `.ralph/pr-title.txt`.
 
 ## Rules
 
