@@ -80,6 +80,24 @@ EOF
   fi
 }
 
+# Post a comment on the issue when Ralph starts.
+# Args: $1 = issue number
+issue_comment_start() {
+  local issue_number="$1"
+
+  local comment
+  comment="$(cat <<EOF
+### Ralph Loop Starting
+
+Ralph is now working on this issue. The agent will iterate on implementing the task until the reviewer approves or the maximum iteration limit is reached.
+
+I'll post another comment when the loop completes with a link to the pull request.
+EOF
+)"
+
+  gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
+}
+
 # Post a comment on the issue with the Ralph loop result.
 # Args: $1 = issue number, $2 = final status, $3 = pr url
 issue_comment() {
