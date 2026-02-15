@@ -199,7 +199,7 @@ echo "⬆️  Pushing branch ${BRANCH_NAME}..."
 git push origin "${BRANCH_NAME}"
 
 # PR creation, issue commenting, and merge handling are now delegated to the reviewer agent
-# Check if squash-merge was completed
+# Check if squash-merge was completed or if PR was created
 effective_strategy="pr"
 pr_url_or_sha=""
 if [[ -f ".ralph/merge-commit.txt" ]]; then
@@ -207,6 +207,11 @@ if [[ -f ".ralph/merge-commit.txt" ]]; then
   if [[ -n "${pr_url_or_sha}" ]]; then
     effective_strategy="squash-merge"
     echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
+  fi
+elif [[ -f ".ralph/pr-url.txt" ]]; then
+  pr_url_or_sha="$(cat .ralph/pr-url.txt)"
+  if [[ -n "${pr_url_or_sha}" ]]; then
+    echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
 fi
 
