@@ -83,7 +83,14 @@ if [[ -n "${IS_PULL_REQUEST}" ]]; then
   exit 0
 fi
 
-BASE_BRANCH="${INPUT_BASE_BRANCH:-main}"
+# Auto-detect base branch if not provided
+BASE_BRANCH="${INPUT_BASE_BRANCH:-}"
+if [[ -z "${BASE_BRANCH}" ]]; then
+  echo "🔍 Auto-detecting repository default branch..."
+  BASE_BRANCH="$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "main")"
+  echo "✅ Detected default branch: ${BASE_BRANCH}"
+fi
+
 BRANCH_NAME="ralph/issue-${ISSUE_NUMBER}"
 echo "🤖 === Claude Ralph GitHub Action ==="
 echo "📋 Issue: #${ISSUE_NUMBER} - ${ISSUE_TITLE}"
@@ -151,7 +158,6 @@ if [[ -z "${final_status}" ]]; then
     *) final_status="ERROR" ;;
   esac
   state_write_final_status "${final_status}"
-  state_commit "ralph: set final status ${final_status}"
 fi
 
 iteration="$(state_read_iteration)"

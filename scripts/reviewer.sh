@@ -35,7 +35,7 @@ cli_args=(
   --append-system-prompt "$(cat "${PROMPTS_DIR}/reviewer-system.md")"
 )
 
-if [[ "${RALPH_VERBOSE:-true}" != "false" ]]; then
+if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
   cli_args+=(--verbose)
 fi
 
