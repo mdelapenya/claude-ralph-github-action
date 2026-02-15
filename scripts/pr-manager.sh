@@ -91,32 +91,32 @@ issue_comment_start() {
 
 Ralph is now working on this issue. The agent will iterate on implementing the task until the reviewer approves or the maximum iteration limit is reached.
 
-I'll update this comment when the loop completes with a link to the pull request.
+I'll post a separate comment when the loop completes with a link to the pull request.
 
-<!-- ralph-status-comment -->
+<!-- ralph-start-comment -->
 EOF
 )"
 
-  # Check if a Ralph comment already exists
+  # Check if a Ralph start comment already exists
   local existing_comment_id
   existing_comment_id="$(gh api "repos/${REPO}/issues/${issue_number}/comments" \
-    --jq '.[] | select(.body | contains("<!-- ralph-status-comment -->")) | .id' \
+    --jq '.[] | select(.body | contains("<!-- ralph-start-comment -->")) | .id' \
     2>/dev/null | head -n1 || echo "")"
 
   if [[ -n "${existing_comment_id}" ]]; then
-    echo "Updating existing Ralph comment ID: ${existing_comment_id}"
+    echo "Updating existing Ralph start comment ID: ${existing_comment_id}"
     local update_output
     if update_output="$(gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
       -f body="${comment}" 2>&1)"; then
-      echo "Successfully updated existing comment"
+      echo "Successfully updated existing start comment"
     else
-      echo "Warning: Failed to update existing comment: ${update_output}"
-      echo "Creating new comment as fallback"
+      echo "Warning: Failed to update existing start comment: ${update_output}"
+      echo "Creating new start comment as fallback"
       gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
     fi
   else
-    echo "Creating new Ralph comment"
+    echo "Creating new Ralph start comment"
     gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
   fi
 }
@@ -145,7 +145,7 @@ The task has been implemented and approved by the reviewer after **${iteration}*
 
 The changes have been squash-merged directly to the default branch and this issue is now closed.
 
-<!-- ralph-status-comment -->
+<!-- ralph-end-comment -->
 EOF
 )"
       else
@@ -158,7 +158,7 @@ The task has been implemented and approved by the reviewer after **${iteration}*
 
 The PR is ready for human review and merge.
 
-<!-- ralph-status-comment -->
+<!-- ralph-end-comment -->
 EOF
 )"
       fi
@@ -175,7 +175,7 @@ The PR contains the latest work but may need additional changes. You can:
 - Review the PR and provide manual feedback
 - Re-trigger the loop by removing and re-adding the label
 
-<!-- ralph-status-comment -->
+<!-- ralph-end-comment -->
 EOF
 )"
       ;;
@@ -189,32 +189,32 @@ ${pr_url_or_sha:+**Pull Request:** ${pr_url_or_sha}}
 
 Check the action logs for details. You can re-trigger by removing and re-adding the label.
 
-<!-- ralph-status-comment -->
+<!-- ralph-end-comment -->
 EOF
 )"
       ;;
   esac
 
-  # Check if a Ralph comment already exists
+  # Check if a Ralph end comment already exists
   local existing_comment_id
   existing_comment_id="$(gh api "repos/${REPO}/issues/${issue_number}/comments" \
-    --jq '.[] | select(.body | contains("<!-- ralph-status-comment -->")) | .id' \
+    --jq '.[] | select(.body | contains("<!-- ralph-end-comment -->")) | .id' \
     2>/dev/null | head -n1 || echo "")"
 
   if [[ -n "${existing_comment_id}" ]]; then
-    echo "Updating existing Ralph comment ID: ${existing_comment_id}"
+    echo "Updating existing Ralph end comment ID: ${existing_comment_id}"
     local update_output
     if update_output="$(gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
       -f body="${comment}" 2>&1)"; then
-      echo "Successfully updated existing comment"
+      echo "Successfully updated existing end comment"
     else
-      echo "Warning: Failed to update existing comment: ${update_output}"
-      echo "Creating new comment as fallback"
+      echo "Warning: Failed to update existing end comment: ${update_output}"
+      echo "Creating new end comment as fallback"
       gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
     fi
   else
-    echo "Creating new Ralph comment"
+    echo "Creating new Ralph end comment"
     gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
   fi
 }
