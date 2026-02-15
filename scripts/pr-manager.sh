@@ -105,10 +105,14 @@ EOF
 
   if [[ -n "${existing_comment_id}" ]]; then
     echo "Updating existing Ralph comment ID: ${existing_comment_id}"
-    if ! gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
+    local update_output
+    if update_output="$(gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
-      -f body="${comment}" 2>/dev/null; then
-      echo "Warning: Failed to update existing comment, creating new one"
+      -f body="${comment}" 2>&1)"; then
+      echo "Successfully updated existing comment"
+    else
+      echo "Warning: Failed to update existing comment: ${update_output}"
+      echo "Creating new comment as fallback"
       gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
     fi
   else
@@ -199,10 +203,14 @@ EOF
 
   if [[ -n "${existing_comment_id}" ]]; then
     echo "Updating existing Ralph comment ID: ${existing_comment_id}"
-    if ! gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
+    local update_output
+    if update_output="$(gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
       -X PATCH \
-      -f body="${comment}" 2>/dev/null; then
-      echo "Warning: Failed to update existing comment, creating new one"
+      -f body="${comment}" 2>&1)"; then
+      echo "Successfully updated existing comment"
+    else
+      echo "Warning: Failed to update existing comment: ${update_output}"
+      echo "Creating new comment as fallback"
       gh issue comment "${issue_number}" --repo "${REPO}" --body "${comment}"
     fi
   else
