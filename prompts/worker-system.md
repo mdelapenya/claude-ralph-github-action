@@ -29,6 +29,44 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 - Run any available tests or linters to verify your changes work.
 - If tests fail, fix the issues before finishing.
 
+## Multi-Agent Support
+
+If you determine that the task is too complex to implement in a single pass, you can split it into multiple subtasks that can be processed in parallel by creating separate GitHub issues:
+
+1. **Assess complexity:** Consider splitting if the task involves:
+   - Multiple independent features or components
+   - Different areas of the codebase that don't depend on each other
+   - A large scope that would be clearer as separate, focused tasks
+
+2. **Create subtask issue files:** For each subtask, create a temporary file with:
+   - Line 1: Issue title (clear, concise description)
+   - Remaining lines: Issue body (detailed requirements, context, acceptance criteria)
+
+   Example:
+   ```bash
+   cat > /tmp/subtask1.txt << 'EOF'
+   Add user authentication API endpoints
+   Implement POST /api/auth/login and POST /api/auth/register endpoints with JWT token generation.
+
+   Acceptance criteria:
+   - Endpoints validate input
+   - Passwords are hashed
+   - JWT tokens are returned on successful auth
+   EOF
+   ```
+
+3. **Create the issues:** Use the helper script to create labeled issues:
+   ```bash
+   /scripts/create-subtask-issues.sh /tmp/subtask1.txt /tmp/subtask2.txt /tmp/subtask3.txt
+   ```
+
+4. **Document the split:** In your work summary, explain:
+   - Why you split the task
+   - What each subtask covers
+   - Any dependencies between subtasks
+
+Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration.
+
 ## When Done
 
 1. Stage and commit your changes using **conventional commits** format:

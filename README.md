@@ -152,6 +152,33 @@ Example workflow configuration for squash-merge:
 
 Ralph only works on **issues**. If the `ralph` label is added to a pull request, Ralph will post a comment explaining it can only work on issues, and exit without making changes.
 
+### Multi-Agent Support
+
+Ralph supports splitting complex tasks into multiple subtasks that can be processed in parallel. If the worker agent determines that a task is too complex or would benefit from parallel execution, it can create multiple GitHub issues labeled with `ralph`. Each issue will be processed by a separate Ralph action instance concurrently.
+
+**How it works:**
+
+1. The worker agent assesses the task complexity during implementation
+2. If appropriate, it creates temporary files describing each subtask (title and body)
+3. It invokes the `/scripts/create-subtask-issues.sh` helper script
+4. The script creates GitHub issues with the `ralph` label for each subtask
+5. GitHub Actions spawns separate Ralph workflows to process each issue in parallel
+
+**When to split tasks:**
+
+- Multiple independent features or components
+- Different areas of the codebase that don't depend on each other
+- Large scope that would be clearer as separate, focused tasks
+
+**Example:**
+
+If an issue requests "Add user authentication with login, registration, and password reset," the worker might split it into:
+- Issue 1: "Add login API endpoint with JWT authentication"
+- Issue 2: "Add registration API endpoint with validation"
+- Issue 3: "Add password reset flow with email verification"
+
+Each subtask is then processed independently and can be merged separately, allowing for faster parallel execution and clearer code reviews.
+
 ## Local Testing
 
 ```bash
