@@ -17,13 +17,13 @@ ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep}"
 iteration="$(state_read_iteration)"
 feedback="$(state_read_review_feedback)"
 
-# Build the worker prompt
+# Build the worker prompt - agent reads state files directly
 prompt="You are on iteration ${iteration} of a Ralph loop. Work on the task."
 prompt+=$'\n\n'"Read .ralph/task.md for the task description."
-prompt+=$'\n\n'"Read .ralph/context.md for branch context (whether this is a fresh start or continuation of previous work, and any merge conflicts to resolve)."
+prompt+=$'\n\n'"Read .ralph/iteration.txt to know which iteration this is."
 
 if [[ -n "${feedback}" && "${iteration}" -gt 1 ]]; then
-  prompt+=$'\n\n'"IMPORTANT: The reviewer provided feedback on your previous iteration. Read .ralph/review-feedback.txt and address it as your highest priority."
+  prompt+=$'\n\n'"Read .ralph/review-feedback.txt for reviewer feedback from the previous iteration (HIGHEST PRIORITY)."
 fi
 
 prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."

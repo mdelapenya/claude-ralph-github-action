@@ -13,7 +13,6 @@ set -euo pipefail
 
 SCRIPTS_DIR="${SCRIPTS_DIR:-/scripts}"
 source "${SCRIPTS_DIR}/state.sh"
-source "${SCRIPTS_DIR}/pr-manager.sh"
 
 # --- Early input validation ---
 # Check ANTHROPIC_API_KEY
@@ -101,10 +100,10 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 WORKSPACE="${GITHUB_WORKSPACE}"
 cd "${WORKSPACE}"
 
-# Check if the ralph branch already exists on the remote
+# Simplified: agents will handle branch context
+git fetch origin
 if git ls-remote --heads origin "${BRANCH_NAME}" | grep -q "${BRANCH_NAME}"; then
   echo "🔄 Branch ${BRANCH_NAME} exists, checking out..."
-  git fetch origin "${BRANCH_NAME}"
   git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
 else
   echo "🌱 Creating new branch ${BRANCH_NAME} from ${BASE_BRANCH}..."
@@ -117,31 +116,13 @@ state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_iteration "0"
 
-# --- Determine merge strategy early (needed for pr-info.txt) ---
-MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
-if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
-  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
-  MERGE_STRATEGY="pr"
-fi
-
-DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH:-}"
-if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
-  echo "🔍 Auto-detecting default branch..."
-  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "")"
-  if [[ -z "${DEFAULT_BRANCH}" ]]; then
-    echo "❌ Error: Could not auto-detect default branch. Set the 'default_branch' input explicitly."
-    exit 1
-  fi
-  echo "   Detected: ${DEFAULT_BRANCH}"
-fi
-
-# --- Write PR info for the reviewer agent ---
+# --- Write PR info for the reviewer agent (validation delegated to reviewer) ---
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
-  echo "merge_strategy=${MERGE_STRATEGY}"
-  echo "default_branch=${DEFAULT_BRANCH}"
+  echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
+  echo "default_branch=${INPUT_DEFAULT_BRANCH:-}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
   if [[ -n "${existing_pr_number}" ]]; then
@@ -151,12 +132,8 @@ fi
   fi
 } > "${RALPH_DIR}/pr-info.txt"
 
-# --- Comment on issue to indicate start ---
-echo ""
-echo "💬 Commenting on issue #${ISSUE_NUMBER} (start)..."
-issue_comment_start "${ISSUE_NUMBER}" || {
-  echo "⚠️  Initial issue comment failed (continuing anyway)"
-}
+# --- Comment on issue to indicate start (delegated to reviewer) ---
+# Initial comment now posted by the reviewer agent on first iteration
 
 # --- Run the Ralph loop ---
 echo ""
@@ -181,70 +158,22 @@ iteration="$(state_read_iteration)"
 echo ""
 echo "🏁 === Ralph Loop Finished: ${final_status} (${iteration} iterations) ==="
 
-# --- Remove .ralph/ if it was accidentally staged/committed ---
-if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
-  git rm -rf --quiet .ralph
-  git commit -m "ralph: remove state directory from branch"
-fi
-
-# --- Revert any .github/workflows/ changes the agent should not have made ---
-workflow_files="$(git diff --name-only "origin/${BASE_BRANCH}...HEAD" -- .github/workflows/ 2>/dev/null || true)"
-if [[ -n "${workflow_files}" ]]; then
-  echo "⚠️  Agent modified workflow files — reverting to avoid push rejection:"
-  echo "${workflow_files}"
-  echo "${workflow_files}" | while IFS= read -r f; do
-    git checkout "origin/${BASE_BRANCH}" -- "${f}" 2>/dev/null || git rm -f --quiet "${f}"
-  done
-  git commit -m "ralph: revert unauthorized workflow file changes"
-fi
-
-# --- Push branch ---
-echo ""
-echo "⬆️  Pushing branch ${BRANCH_NAME}..."
-git push origin "${BRANCH_NAME}"
-
-# --- Handle merge strategy ---
-pr_url_or_sha=""
-
-# Derive effective strategy from what actually happened, not the input.
-# If the reviewer produced a merge commit, it's a squash-merge regardless of config.
-# If not, fall back to PR even if squash-merge was requested.
+# Branch cleanup, PR creation, issue commenting, merge handling, and branch push are now delegated to the reviewer agent
+# Check if squash-merge was completed or if PR was created
 effective_strategy="pr"
-
+pr_url_or_sha=""
 if [[ -f ".ralph/merge-commit.txt" ]]; then
   pr_url_or_sha="$(cat .ralph/merge-commit.txt)"
   if [[ -n "${pr_url_or_sha}" ]]; then
     effective_strategy="squash-merge"
-    echo ""
     echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
-
-    echo "🔒 Closing issue #${ISSUE_NUMBER}..."
-    gh issue close "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --comment "Closed by squash-merge commit ${pr_url_or_sha}" || {
-      echo "⚠️  Failed to close issue"
-    }
   fi
-fi
-
-if [[ "${effective_strategy}" == "pr" ]]; then
-  echo ""
-  echo "🔀 Managing pull request..."
-  pr_url_or_sha="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {
-    echo "⚠️  PR management failed"
-    pr_url_or_sha=""
-  }
-
-  # Extract just the URL (last line of output from pr_create_or_update)
+elif [[ -f ".ralph/pr-url.txt" ]]; then
+  pr_url_or_sha="$(cat .ralph/pr-url.txt)"
   if [[ -n "${pr_url_or_sha}" ]]; then
-    pr_url_or_sha="$(echo "${pr_url_or_sha}" | tail -1)"
+    echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
 fi
-
-# --- Comment on issue ---
-echo ""
-echo "💬 Commenting on issue #${ISSUE_NUMBER}..."
-issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${effective_strategy}" || {
-  echo "⚠️  Issue comment failed"
-}
 
 # --- Set outputs ---
 {
@@ -255,13 +184,11 @@ issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${effectiv
 
 echo ""
 echo "✅ === Done ==="
-if [[ "${effective_strategy}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
-  echo "🔗 Commit: ${pr_url_or_sha}"
-else
-  echo "🔗 PR: ${pr_url_or_sha}"
-fi
 echo "📊 Status: ${final_status}"
 echo "🔢 Iterations: ${iteration}"
+if [[ -n "${pr_url_or_sha}" ]]; then
+  echo "🔗 ${effective_strategy}: ${pr_url_or_sha}"
+fi
 
 # Exit with appropriate code
 case "${final_status}" in
