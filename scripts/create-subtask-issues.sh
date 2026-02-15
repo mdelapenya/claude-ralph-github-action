@@ -71,13 +71,17 @@ for issue_file in "$@"; do
 
   # Create the issue with the trigger label
   # The gh issue create command returns the URL of the created issue
+  # Temporarily disable errexit to capture both output and exit code
+  set +e
   issue_url="$(gh issue create \
     --repo "${repo}" \
     --title "${issue_title}" \
     --body "${issue_body}" \
     --label "${trigger_label}" 2>&1)"
+  exit_code=$?
+  set -e
 
-  if [[ $? -eq 0 ]]; then
+  if [[ ${exit_code} -eq 0 ]]; then
     created_issues+=("${issue_url}")
     echo "   ✅ Created: ${issue_url}"
   else
