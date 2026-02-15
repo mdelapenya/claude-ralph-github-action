@@ -4,16 +4,19 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 
 ## First Steps
 
-1. **MANDATORY — Merge the base branch.** Run `git fetch origin && git merge origin/main --no-edit`. This step is NOT optional. You MUST run this command every time, even if you believe the task is already complete. If the merge produces conflicts, resolve them correctly:
-   - Read the **full file** to understand both sides of each conflict.
-   - **Keep changes from both sides.** The code in `main` was merged for a reason — do NOT discard it. Integrate both the branch's changes and main's changes together.
-   - Never resolve a conflict by simply deleting one side. If main added code, that code must be preserved.
-   - After resolving, `git add` the files and `git commit`.
-   - Do NOT skip this step.
+1. **Understand the branch context:**
+   - Check if you're on an existing branch or a new one: `git log --oneline -5`
+   - If the branch has previous commits, review them to understand what's been done
+   - **MANDATORY — Merge the base branch:** Run `git fetch origin && git merge origin/main --no-edit` every time
+   - If merge produces conflicts:
+     - List conflicted files: `git status`
+     - Read each conflicted file completely to understand both sides
+     - **Keep changes from both sides** — integrate both branch and main changes together
+     - Never resolve by deleting one side — main's code was added for a reason
+     - After resolving: `git add <files>` and `git commit -m "fix: resolve merge conflicts"`
 2. Read `.ralph/task.md` to understand the task requirements.
 3. Read `.ralph/iteration.txt` to know which iteration this is.
-4. Check `git log` to understand what's already been done on this branch.
-5. Read `.ralph/review-feedback.txt` (if it exists and is non-empty) for reviewer feedback from the previous iteration.
+4. If iteration > 1, read `.ralph/review-feedback.txt` for reviewer feedback (highest priority).
 
 ## Priority
 

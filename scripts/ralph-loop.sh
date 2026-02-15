@@ -32,7 +32,6 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   # --- WORK PHASE ---
   echo ""
   echo "--- Work Phase ---"
-  head_before="$(git rev-parse HEAD)"
 
   if ! "${SCRIPT_DIR}/worker.sh"; then
     echo "ERROR: Worker failed on iteration ${iteration}"
@@ -40,12 +39,8 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
     exit 1
   fi
 
-  head_after="$(git rev-parse HEAD)"
-  if [[ "${head_before}" == "${head_after}" ]]; then
-    echo "⚠️  Worker made no commits on iteration ${iteration}. Continuing to next iteration."
-    state_write_review_feedback "You did not make any commits in the previous iteration. You MUST make code changes and commit them. Check for merge conflicts (look for conflict markers <<<<<<< in files) and resolve them. Then address the task requirements and commit your changes."
-    continue
-  fi
+  # Worker is now responsible for ensuring commits are made
+  # If no commits, worker should handle it in the next iteration
 
   # --- REVIEW PHASE ---
   echo ""

@@ -13,7 +13,6 @@ set -euo pipefail
 
 SCRIPTS_DIR="${SCRIPTS_DIR:-/scripts}"
 source "${SCRIPTS_DIR}/state.sh"
-source "${SCRIPTS_DIR}/pr-manager.sh"
 
 # --- Early input validation ---
 # Check ANTHROPIC_API_KEY
@@ -101,10 +100,10 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 WORKSPACE="${GITHUB_WORKSPACE}"
 cd "${WORKSPACE}"
 
-# Check if the ralph branch already exists on the remote
+# Simplified: agents will handle branch context
+git fetch origin
 if git ls-remote --heads origin "${BRANCH_NAME}" | grep -q "${BRANCH_NAME}"; then
   echo "🔄 Branch ${BRANCH_NAME} exists, checking out..."
-  git fetch origin "${BRANCH_NAME}"
   git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
 else
   echo "🌱 Creating new branch ${BRANCH_NAME} from ${BASE_BRANCH}..."
@@ -151,12 +150,8 @@ fi
   fi
 } > "${RALPH_DIR}/pr-info.txt"
 
-# --- Comment on issue to indicate start ---
-echo ""
-echo "💬 Commenting on issue #${ISSUE_NUMBER} (start)..."
-issue_comment_start "${ISSUE_NUMBER}" || {
-  echo "⚠️  Initial issue comment failed (continuing anyway)"
-}
+# --- Comment on issue to indicate start (delegated to reviewer) ---
+# Initial comment now posted by the reviewer agent on first iteration
 
 # --- Run the Ralph loop ---
 echo ""
@@ -203,48 +198,17 @@ echo ""
 echo "⬆️  Pushing branch ${BRANCH_NAME}..."
 git push origin "${BRANCH_NAME}"
 
-# --- Handle merge strategy ---
-pr_url_or_sha=""
-
-# Derive effective strategy from what actually happened, not the input.
-# If the reviewer produced a merge commit, it's a squash-merge regardless of config.
-# If not, fall back to PR even if squash-merge was requested.
+# PR creation, issue commenting, and merge handling are now delegated to the reviewer agent
+# Check if squash-merge was completed
 effective_strategy="pr"
-
+pr_url_or_sha=""
 if [[ -f ".ralph/merge-commit.txt" ]]; then
   pr_url_or_sha="$(cat .ralph/merge-commit.txt)"
   if [[ -n "${pr_url_or_sha}" ]]; then
     effective_strategy="squash-merge"
-    echo ""
     echo "✅ Squash-merge completed by reviewer: ${pr_url_or_sha}"
-
-    echo "🔒 Closing issue #${ISSUE_NUMBER}..."
-    gh issue close "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --comment "Closed by squash-merge commit ${pr_url_or_sha}" || {
-      echo "⚠️  Failed to close issue"
-    }
   fi
 fi
-
-if [[ "${effective_strategy}" == "pr" ]]; then
-  echo ""
-  echo "🔀 Managing pull request..."
-  pr_url_or_sha="$(pr_create_or_update "${BRANCH_NAME}" "${BASE_BRANCH}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" "${final_status}")" || {
-    echo "⚠️  PR management failed"
-    pr_url_or_sha=""
-  }
-
-  # Extract just the URL (last line of output from pr_create_or_update)
-  if [[ -n "${pr_url_or_sha}" ]]; then
-    pr_url_or_sha="$(echo "${pr_url_or_sha}" | tail -1)"
-  fi
-fi
-
-# --- Comment on issue ---
-echo ""
-echo "💬 Commenting on issue #${ISSUE_NUMBER}..."
-issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${effective_strategy}" || {
-  echo "⚠️  Issue comment failed"
-}
 
 # --- Set outputs ---
 {
@@ -255,13 +219,11 @@ issue_comment "${ISSUE_NUMBER}" "${final_status}" "${pr_url_or_sha}" "${effectiv
 
 echo ""
 echo "✅ === Done ==="
-if [[ "${effective_strategy}" == "squash-merge" && "${final_status}" == "SHIPPED" ]]; then
-  echo "🔗 Commit: ${pr_url_or_sha}"
-else
-  echo "🔗 PR: ${pr_url_or_sha}"
-fi
 echo "📊 Status: ${final_status}"
 echo "🔢 Iterations: ${iteration}"
+if [[ -n "${pr_url_or_sha}" ]]; then
+  echo "🔗 ${effective_strategy}: ${pr_url_or_sha}"
+fi
 
 # Exit with appropriate code
 case "${final_status}" in
