@@ -17,33 +17,13 @@ ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep}"
 iteration="$(state_read_iteration)"
 feedback="$(state_read_review_feedback)"
 
-# Write context file for the worker
-cat > "${RALPH_DIR}/context.md" <<EOF
-# Branch Context
-
-This is iteration ${iteration}.
-
-## Branch Status
-Check git log to see what's been done on this branch so far.
-
-## Important
-- You MUST merge the base branch first: git fetch origin && git merge origin/main --no-edit
-- If merge conflicts occur, resolve them carefully (keep changes from both sides)
-- After resolving conflicts, git add the files and commit
-
-$(if [[ -n "${feedback}" && "${iteration}" -gt 1 ]]; then
-  echo "## Reviewer Feedback from Previous Iteration"
-  echo "HIGHEST PRIORITY: Address the feedback in .ralph/review-feedback.txt"
-fi)
-EOF
-
-# Build the worker prompt
+# Build the worker prompt - agent reads state files directly
 prompt="You are on iteration ${iteration} of a Ralph loop. Work on the task."
 prompt+=$'\n\n'"Read .ralph/task.md for the task description."
-prompt+=$'\n\n'"Read .ralph/context.md for branch context."
+prompt+=$'\n\n'"Read .ralph/iteration.txt to know which iteration this is."
 
 if [[ -n "${feedback}" && "${iteration}" -gt 1 ]]; then
-  prompt+=$'\n\n'"IMPORTANT: The reviewer provided feedback on your previous iteration. Read .ralph/review-feedback.txt and address it as your highest priority."
+  prompt+=$'\n\n'"Read .ralph/review-feedback.txt for reviewer feedback from the previous iteration (HIGHEST PRIORITY)."
 fi
 
 prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."

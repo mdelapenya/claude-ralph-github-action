@@ -116,31 +116,13 @@ state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_iteration "0"
 
-# --- Determine merge strategy early (needed for pr-info.txt) ---
-MERGE_STRATEGY="${INPUT_MERGE_STRATEGY:-pr}"
-if [[ "${MERGE_STRATEGY}" != "pr" && "${MERGE_STRATEGY}" != "squash-merge" ]]; then
-  echo "⚠️  Invalid merge_strategy '${MERGE_STRATEGY}'. Valid values: 'pr', 'squash-merge'. Defaulting to 'pr'."
-  MERGE_STRATEGY="pr"
-fi
-
-DEFAULT_BRANCH="${INPUT_DEFAULT_BRANCH:-}"
-if [[ "${MERGE_STRATEGY}" == "squash-merge" && -z "${DEFAULT_BRANCH}" ]]; then
-  echo "🔍 Auto-detecting default branch..."
-  DEFAULT_BRANCH="$(gh repo view "${GITHUB_REPOSITORY}" --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "")"
-  if [[ -z "${DEFAULT_BRANCH}" ]]; then
-    echo "❌ Error: Could not auto-detect default branch. Set the 'default_branch' input explicitly."
-    exit 1
-  fi
-  echo "   Detected: ${DEFAULT_BRANCH}"
-fi
-
-# --- Write PR info for the reviewer agent ---
+# --- Write PR info for the reviewer agent (validation delegated to reviewer) ---
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
-  echo "merge_strategy=${MERGE_STRATEGY}"
-  echo "default_branch=${DEFAULT_BRANCH}"
+  echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
+  echo "default_branch=${INPUT_DEFAULT_BRANCH:-}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
   if [[ -n "${existing_pr_number}" ]]; then
@@ -176,24 +158,7 @@ iteration="$(state_read_iteration)"
 echo ""
 echo "🏁 === Ralph Loop Finished: ${final_status} (${iteration} iterations) ==="
 
-# --- Remove .ralph/ if it was accidentally staged/committed ---
-if git ls-files --error-unmatch .ralph/ >/dev/null 2>&1; then
-  git rm -rf --quiet .ralph
-  git commit -m "ralph: remove state directory from branch"
-fi
-
-# --- Revert any .github/workflows/ changes the agent should not have made ---
-workflow_files="$(git diff --name-only "origin/${BASE_BRANCH}...HEAD" -- .github/workflows/ 2>/dev/null || true)"
-if [[ -n "${workflow_files}" ]]; then
-  echo "⚠️  Agent modified workflow files — reverting to avoid push rejection:"
-  echo "${workflow_files}"
-  echo "${workflow_files}" | while IFS= read -r f; do
-    git checkout "origin/${BASE_BRANCH}" -- "${f}" 2>/dev/null || git rm -f --quiet "${f}"
-  done
-  git commit -m "ralph: revert unauthorized workflow file changes"
-fi
-
-# PR creation, issue commenting, merge handling, and branch push are now delegated to the reviewer agent
+# Branch cleanup, PR creation, issue commenting, merge handling, and branch push are now delegated to the reviewer agent
 # Check if squash-merge was completed or if PR was created
 effective_strategy="pr"
 pr_url_or_sha=""
