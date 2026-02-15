@@ -193,12 +193,7 @@ if [[ -n "${workflow_files}" ]]; then
   git commit -m "ralph: revert unauthorized workflow file changes"
 fi
 
-# --- Push branch ---
-echo ""
-echo "⬆️  Pushing branch ${BRANCH_NAME}..."
-git push origin "${BRANCH_NAME}"
-
-# PR creation, issue commenting, and merge handling are now delegated to the reviewer agent
+# PR creation, issue commenting, merge handling, and branch push are now delegated to the reviewer agent
 # Check if squash-merge was completed or if PR was created
 effective_strategy="pr"
 pr_url_or_sha=""

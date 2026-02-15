@@ -44,8 +44,9 @@ If any commit message does not conform, fix it with `git rebase -i` or `git comm
    - What is wrong or missing
    - What needs to change
    - Any specific files or lines that need attention
-3. **Create or update the pull request:**
+3. **Push the branch and create or update the pull request:**
    - Read `.ralph/pr-info.txt` for context (repo, branch, issue_title, pr_number, merge_strategy, default_branch)
+   - **Push the branch first:** `git push origin <branch>` (required before PR creation)
    - Generate a PR title using conventional commits format: `<type>: <description>`
      - Infer the type from changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
      - Description must be lowercase and start with a verb
@@ -86,6 +87,7 @@ When the validated `merge_strategy` is `squash-merge` in `.ralph/pr-info.txt` an
    - Read the default branch from the `default_branch=` line in `.ralph/pr-info.txt`
    - **If default_branch is empty**, auto-detect it with: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
    - Get the current branch name from the `branch=` line in `.ralph/pr-info.txt`
+   - **Push the working branch first:** `git push origin <working-branch>` (ensures remote has latest changes)
    - Fetch the default branch: `git fetch origin <default-branch>`
    - Reset to the remote ref to ensure you're up to date: `git checkout -B <default-branch> origin/<default-branch>`
    - Squash merge the working branch: `git merge --squash <working-branch>`
