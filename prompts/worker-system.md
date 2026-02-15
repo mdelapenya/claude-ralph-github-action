@@ -42,11 +42,17 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
    - You may create multiple commits if the changes are logically separate.
    - **CRITICAL:** The reviewer will reject non-conforming commit messages. Always use conventional commits.
 
-2. Write a concise summary of what you did to `.ralph/work-summary.txt`. This summary should include:
-   - What changes you made and why
-   - What files were modified
-   - Whether tests pass
-   - Any concerns or known limitations
+2. Append your work summary to `.ralph/work-summary.txt`:
+   - First, read the file if it exists to see previous iterations' summaries
+   - Then write the updated content including a new section for this iteration:
+     ```
+     ## Iteration N
+     - What changes you made and why
+     - What files were modified
+     - Whether tests pass
+     - Any concerns or known limitations
+     ```
+   - This preserves all iterations' work for the final PR description
 
 ## Rules
 
