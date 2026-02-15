@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # state.sh - .ralph/ state directory read/write helpers
 #
-# All state is stored in .ralph/ at the repo root and committed to the branch
-# for cross-run persistence. Each function operates on a single state file.
+# All state is stored in .ralph/ at the repo root in the working tree only.
+# State is never committed to the branch. Each function operates on a single state file.
 
 set -euo pipefail
 
@@ -99,11 +99,4 @@ state_write_final_status() {
 # Read the final status
 state_read_final_status() {
   cat "${RALPH_DIR}/final-status.txt" 2>/dev/null || echo ""
-}
-
-# No-op: state lives in the working tree only, never committed to the branch.
-# Kept as a function so callers don't break.
-# Args: $1 = commit message (ignored)
-state_commit() {
-  :
 }

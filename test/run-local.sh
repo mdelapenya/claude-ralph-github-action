@@ -81,7 +81,7 @@ docker run --rm \
   -e INPUT_MAX_TURNS_REVIEWER="${INPUT_MAX_TURNS_REVIEWER:-30}" \
   -e INPUT_WORKER_ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task" \
   -e INPUT_REVIEWER_TOOLS="Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task" \
-  -e RALPH_VERBOSE="${RALPH_VERBOSE:-true}" \
+  -e RALPH_VERBOSE="${RALPH_VERBOSE:-true}" \  # Verbose by default in local testing for easier debugging
   -v "${REPO_ROOT}/test/event.json:/tmp/event.json:ro" \
   -v "${TMPDIR}:/workspace" \
   -v "${ORIGIN_DIR}:/origin-repo" \

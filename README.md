@@ -74,7 +74,7 @@ jobs:
 | `max_turns_worker` | No | `30` | Maximum agentic turns per worker invocation |
 | `max_turns_reviewer` | No | `30` | Maximum agentic turns per reviewer invocation |
 | `trigger_label` | No | `ralph` | Issue label that triggers the loop |
-| `base_branch` | No | `main` | Branch to create the PR against |
+| `base_branch` | No | — | Branch to create the PR against (auto-detected from repository default branch if not specified) |
 | `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the worker can use |
 | `reviewer_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the reviewer can use |
 | `merge_strategy` | No | `pr` | Merge strategy: `pr` (create a pull request) or `squash-merge` (squash and push directly to default branch) |
