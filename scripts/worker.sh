@@ -12,7 +12,7 @@ source "${SCRIPT_DIR}/state.sh"
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 WORKER_MODEL="${INPUT_WORKER_MODEL:-sonnet}"
 MAX_TURNS="${INPUT_MAX_TURNS_WORKER:-30}"
-ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep}"
+ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch}"
 
 iteration="$(state_read_iteration)"
 feedback="$(state_read_review_feedback)"
