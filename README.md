@@ -127,6 +127,17 @@ Ralph triggers in two ways:
 
 In both cases, Ralph detects the existing branch if one exists, checks it out, and continues from where it left off. The worker re-reads the task from the issue (which may have changed) and the branch's commit history to understand what was already done. New commits are added on top — Ralph never force-pushes.
 
+### Cross-Execution Context
+
+Ralph can preserve context across workflow runs using GitHub Actions artifacts. This enables Ralph to continue from the exact iteration and review feedback when an issue is re-triggered, rather than starting fresh.
+
+**Benefits:**
+- Resume after hitting max iterations by re-triggering with higher limits
+- Maintain continuity when requirements change and the issue is edited
+- Preserve iteration count and review history across runs
+
+**Setup required:** Add the artifact upload step to your workflow. See [ARTIFACTS.md](ARTIFACTS.md) for complete setup instructions and details on how this feature works.
+
 ### Merge Strategies
 
 Ralph supports two merge strategies:
