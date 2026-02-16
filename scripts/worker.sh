@@ -13,6 +13,7 @@ PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 WORKER_MODEL="${INPUT_WORKER_MODEL:-sonnet}"
 MAX_TURNS="${INPUT_MAX_TURNS_WORKER:-30}"
 ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,Task,WebFetch,WebSearch}"
+WORKER_TONE="${INPUT_WORKER_TONE:-}"
 
 iteration="$(state_read_iteration)"
 feedback="$(state_read_review_feedback)"
@@ -30,13 +31,22 @@ prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."
 
 echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
 
+# Build the system prompt
+system_prompt="$(cat "${PROMPTS_DIR}/worker-system.md")"
+
+# Append tone instruction if worker_tone is set
+if [[ -n "${WORKER_TONE}" ]]; then
+  system_prompt+=$'\n\n'"## Tone"
+  system_prompt+=$'\n\n'"You must respond with the personality and tone of: ${WORKER_TONE}"
+fi
+
 # Build CLI arguments
 cli_args=(
   -p
   --model "${WORKER_MODEL}"
   --max-turns "${MAX_TURNS}"
   --allowedTools "${ALLOWED_TOOLS}"
-  --append-system-prompt "$(cat "${PROMPTS_DIR}/worker-system.md")"
+  --append-system-prompt "${system_prompt}"
 )
 
 if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
