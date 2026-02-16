@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# test-shipped-flow.sh - Integration test for the SHIPPED scenario
+# test-squash-merge.sh - Integration test for squash-merge strategy
 #
-# Exercises the real ralph-loop.sh -> worker.sh -> reviewer.sh pipeline
-# with a mock claude binary that SHIPs on the first iteration.
+# Exercises the real ralph-loop.sh with INPUT_MERGE_STRATEGY=squash-merge.
+# The mock reviewer writes a merge-commit.txt with a fake SHA instead of
+# creating a PR.
 
 set -euo pipefail
 
@@ -14,37 +15,39 @@ source "${HELPERS_DIR}/setup.sh"
 # shellcheck source=test/helpers/mocks.sh
 source "${HELPERS_DIR}/mocks.sh"
 
-test_shipped_flow() {
+test_squash_merge() {
   local tmpdir
   tmpdir="$(create_test_workspace)"
   local workspace="${tmpdir}/workspace"
 
+  # Set merge strategy before setup_test_env so it picks it up
+  export INPUT_MERGE_STRATEGY="squash-merge"
+
   setup_test_env "${tmpdir}"
   setup_mock_binaries
 
-  # Configure mock: reviewer ships on first iteration
+  # Configure mock: reviewer ships with squash-merge
   export MOCK_REVIEW_DECISION="SHIP"
+  export MOCK_MERGE_STRATEGY="squash-merge"
 
   cd "${workspace}"
 
-  # Initialize state (normally done by entrypoint.sh)
+  # Initialize state
   # shellcheck source=scripts/state.sh
   source "${SCRIPTS_DIR}/state.sh"
   state_init
-  state_write_task "Test Task" "Implement a simple feature"
+  state_write_task "Quick Fix" "Small bug fix suitable for squash-merge"
   state_write_iteration "0"
 
-  # Create the branch (ralph-loop.sh doesn't manage branches)
   git checkout -b ralph/issue-42 > /dev/null 2>&1
 
-  # Run the real ralph loop
   export INPUT_MAX_ITERATIONS=5
   local exit_code=0
   "${SCRIPTS_DIR}/ralph-loop.sh" || exit_code=$?
 
   # --- Assertions ---
   if [[ ${exit_code} -ne 0 ]]; then
-    echo "FAIL: expected exit code 0, got ${exit_code}"
+    echo "FAIL: expected exit code 0 (SHIPPED), got ${exit_code}"
     teardown_mock_binaries
     cleanup_test_workspace "${tmpdir}"
     return 1
@@ -57,29 +60,26 @@ test_shipped_flow() {
     return 1
   fi
 
-  if [[ "$(state_read_review_result)" != "SHIP" ]]; then
-    echo "FAIL: expected review_result=SHIP, got $(state_read_review_result)"
+  # Should have merge-commit.txt instead of pr-url.txt
+  if [[ ! -f ".ralph/merge-commit.txt" ]]; then
+    echo "FAIL: expected .ralph/merge-commit.txt to exist"
     teardown_mock_binaries
     cleanup_test_workspace "${tmpdir}"
     return 1
   fi
 
-  if [[ "$(state_read_iteration)" != "1" ]]; then
-    echo "FAIL: expected iteration=1, got $(state_read_iteration)"
+  local merge_sha
+  merge_sha="$(cat .ralph/merge-commit.txt)"
+  if [[ "${merge_sha}" != "abc123def456" ]]; then
+    echo "FAIL: expected merge SHA abc123def456, got ${merge_sha}"
     teardown_mock_binaries
     cleanup_test_workspace "${tmpdir}"
     return 1
   fi
 
-  if [[ ! -f "worker-output-1.txt" ]]; then
-    echo "FAIL: expected worker-output-1.txt to exist"
-    teardown_mock_binaries
-    cleanup_test_workspace "${tmpdir}"
-    return 1
-  fi
-
-  if [[ ! -f ".ralph/pr-url.txt" ]]; then
-    echo "FAIL: expected .ralph/pr-url.txt to exist"
+  # pr-url.txt should NOT exist for squash-merge
+  if [[ -f ".ralph/pr-url.txt" ]]; then
+    echo "FAIL: pr-url.txt should not exist for squash-merge strategy"
     teardown_mock_binaries
     cleanup_test_workspace "${tmpdir}"
     return 1
@@ -88,11 +88,11 @@ test_shipped_flow() {
   # Clean up
   teardown_mock_binaries
   cleanup_test_workspace "${tmpdir}"
-  echo "PASS: SHIPPED flow produces correct outputs"
+  echo "PASS: squash-merge flow produces correct outputs"
 }
 
 main() {
-  test_shipped_flow
+  test_squash_merge
 }
 
 main "$@"
