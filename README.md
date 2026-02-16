@@ -220,6 +220,46 @@ If an issue requests "Add user authentication with login, registration, and pass
 
 Each subtask is then processed independently and can be merged separately, allowing for faster parallel execution and clearer code reviews.
 
+## Testing
+
+Ralph includes unit and integration tests that validate the scripts without calling the Claude API.
+
+### Running Tests
+
+```bash
+# Run all unit + integration tests (no API key needed, completes in seconds)
+bash test/run-all-tests.sh
+
+# Lint all shell scripts
+shellcheck --severity=warning entrypoint.sh scripts/*.sh test/**/*.sh test/*.sh
+```
+
+### Test Suite
+
+| Category | Files | What it tests |
+|----------|-------|---------------|
+| **Unit tests** | `test/unit/test-state.sh` | `state.sh` read/write helpers |
+| | `test/unit/test-output-format.sh` | Action output format validation (`pr_url`, `iterations`, `final_status`) |
+| **Integration tests** | `test/integration/test-shipped-flow.sh` | Full SHIP path: worker commits, reviewer approves, PR URL written |
+| | `test/integration/test-max-iterations.sh` | REVISE loop exhausts `INPUT_MAX_ITERATIONS`, exits with code 2 |
+| | `test/integration/test-error-handling.sh` | Worker failure triggers ERROR exit with code 1 |
+| | `test/integration/test-squash-merge.sh` | Squash-merge strategy writes `merge-commit.txt` instead of PR URL |
+
+### How Integration Tests Work
+
+Integration tests exercise the real `ralph-loop.sh` -> `worker.sh` -> `reviewer.sh` pipeline with mock binaries:
+
+- **Mock `claude`** (`test/helpers/mocks.sh`): A standalone script placed on `PATH` that inspects the prompt to determine worker vs reviewer mode. The worker mock creates a file and commits it. The reviewer mock writes `SHIP` or `REVISE` to state files. Behavior is configurable via env vars:
+  - `MOCK_REVIEW_DECISION` — `SHIP` (default) or `REVISE`
+  - `MOCK_WORKER_FAIL` — Set to `true` to simulate worker failure
+  - `MOCK_MERGE_STRATEGY` — Set to `squash-merge` for squash-merge tests
+- **Mock `gh`**: Returns mock PR URLs and no-ops for issue comments
+- **Isolated workspaces** (`test/helpers/setup.sh`): Each test runs in a temp directory with its own git repo and bare remote, so `git push` works without network access
+
+### CI Integration
+
+To run tests in your CI workflow, copy the job definitions from `test/ci-example.yml` into your `.github/workflows/ci.yml`. The example includes separate jobs for unit and integration tests.
+
 ## Local Testing
 
 ```bash

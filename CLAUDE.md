@@ -29,9 +29,12 @@ Key design: the worker and reviewer are invoked via `claude -p` (print/non-inter
 docker build -t claude-ralph-test .
 
 # Lint all shell scripts
-shellcheck --severity=warning entrypoint.sh scripts/*.sh test/*.sh
+shellcheck --severity=warning entrypoint.sh scripts/*.sh test/**/*.sh test/*.sh
 
-# Run locally (requires ANTHROPIC_API_KEY)
+# Run all unit + integration tests (no API key needed)
+bash test/run-all-tests.sh
+
+# Run locally against real Claude (requires ANTHROPIC_API_KEY)
 ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 
 # Run with verbose Claude CLI output
@@ -40,6 +43,19 @@ RALPH_VERBOSE=true ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 # Override models/limits for testing
 INPUT_WORKER_MODEL=haiku INPUT_MAX_ITERATIONS=1 ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 ```
+
+### Test Structure
+
+Tests live in `test/` and are organized as:
+
+- **`test/unit/`** — Unit tests for individual functions (state.sh helpers, output format validation)
+- **`test/integration/`** — Integration tests that exercise real scripts (`ralph-loop.sh` -> `worker.sh` -> `reviewer.sh`) with mock `claude` and `gh` binaries
+- **`test/helpers/`** — Shared test utilities:
+  - `setup.sh` — Workspace creation, environment setup, event JSON generation
+  - `mocks.sh` — Mock `claude` and `gh` binaries placed on PATH; configurable via `MOCK_REVIEW_DECISION`, `MOCK_WORKER_FAIL`, `MOCK_MERGE_STRATEGY`
+- **`test/run-all-tests.sh`** — Runs all `test/unit/test-*.sh` and `test/integration/test-*.sh` files
+
+Integration tests create isolated temp workspaces with bare git remotes, so `git push` works without network access. Each test configures mock behavior via env vars, runs the real loop scripts, and validates `.ralph/` state files and exit codes.
 
 ## Key Features
 
