@@ -90,7 +90,6 @@ if [[ -z "${BASE_BRANCH}" ]]; then
   BASE_BRANCH="$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "main")"
   echo "✅ Detected default branch: ${BASE_BRANCH}"
 fi
-
 BRANCH_NAME="ralph/issue-${ISSUE_NUMBER}"
 echo "🤖 === Claude Ralph GitHub Action ==="
 echo "📋 Issue: #${ISSUE_NUMBER} - ${ISSUE_TITLE}"
