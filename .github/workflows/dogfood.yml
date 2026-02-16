@@ -57,6 +57,7 @@ jobs:
         timeout-minutes: 55
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GH_PAT_TOKEN }}
 
       - name: Save Docker image to cache
         if: steps.docker-cache.outputs.cache-hit != 'true'

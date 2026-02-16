@@ -10,7 +10,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  workflows: write  # Optional: allows Ralph to edit workflow files
 
 jobs:
   reject-pr:
@@ -46,6 +45,10 @@ jobs:
       - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional: use a PAT with the `workflow` scope to allow Ralph
+          # to modify files in .github/workflows/. The default GITHUB_TOKEN
+          # cannot push workflow changes regardless of permissions settings.
+          # github_token: ${{ secrets.GH_PAT_TOKEN }}
           # Optional: customize models
           # worker_model: 'opus'
           # reviewer_model: 'sonnet'

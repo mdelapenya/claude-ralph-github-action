@@ -28,7 +28,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  workflows: write  # Optional: allows Ralph to edit workflow files
 
 jobs:
   reject-pr:
@@ -181,13 +180,27 @@ Ralph requires the following GitHub Actions permissions:
 - **`contents: write`** — Required to create branches, commit changes, and push code
 - **`pull-requests: write`** — Required to create and update pull requests
 - **`issues: write`** — Required to comment on issues
-- **`workflows: write`** — Optional, but required if you want Ralph to be able to modify workflow files in `.github/workflows/`
 
-By default, GitHub Actions [prevents actions from modifying workflow files](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) as a security measure. If you need Ralph to edit workflow files (for example, to update CI/CD configurations), add the `workflows: write` permission to your Ralph workflow.
+#### Modifying workflow files
 
-**Without `workflows: write`:** Ralph can modify all files except those in `.github/workflows/`. Push attempts that include workflow changes will fail.
+By default, the `GITHUB_TOKEN` [cannot modify workflow files](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) in `.github/workflows/`. This is a GitHub security restriction that **cannot** be overridden via the `permissions` block (`workflows` is not a valid permission scope).
 
-**With `workflows: write`:** Ralph can modify any file including workflows. Use this when tasks specifically require workflow changes.
+If you need Ralph to edit workflow files, use a Personal Access Token (PAT) with the `workflow` scope:
+
+1. Create a [fine-grained or classic PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with the `workflow` scope
+2. Add it as a repository secret (e.g., `GH_PAT_TOKEN`)
+3. Pass it to the action:
+
+```yaml
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GH_PAT_TOKEN }}
+```
+
+**Without a PAT:** Ralph can modify all files except those in `.github/workflows/`. Push attempts that include workflow changes will fail.
+
+**With a PAT (workflow scope):** Ralph can modify any file including workflows. Use this when tasks specifically require workflow changes.
 
 ### Pull requests
 
