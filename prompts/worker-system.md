@@ -57,7 +57,7 @@ If you determine that the task is too complex to implement in a single pass, you
 
 3. **Create the issues:** Use the helper script to create labeled issues:
    ```bash
-   /scripts/create-subtask-issues.sh /tmp/subtask1.txt /tmp/subtask2.txt /tmp/subtask3.txt
+   ./scripts/create-subtask-issues.sh /tmp/subtask1.txt /tmp/subtask2.txt /tmp/subtask3.txt
    ```
 
 4. **Document the split:** In your work summary, explain:
@@ -65,7 +65,7 @@ If you determine that the task is too complex to implement in a single pass, you
    - What each subtask covers
    - Any dependencies between subtasks
 
-Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration.
+Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration. This is different from using Claude Code's Task tool - you are creating GitHub issues, not spawning internal agents.
 
 ## When Done
 
