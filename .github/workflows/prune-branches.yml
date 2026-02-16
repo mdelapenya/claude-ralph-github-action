@@ -1,0 +1,28 @@
+name: Prune merged branches
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete branches from merged PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state merged --json headRefName --jq '.[].headRefName' | while read -r branch; do
+            if [ "$branch" = "main" ]; then
+              continue
+            fi
+            echo "Deleting branch: $branch"
+            git push origin --delete "$branch" 2>/dev/null || echo "Branch $branch already deleted"
+          done
