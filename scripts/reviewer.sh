@@ -12,6 +12,7 @@ PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
 MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-10}"
 REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task}"
+REVIEWER_TONE="${INPUT_REVIEWER_TONE:-}"
 
 iteration="$(state_read_iteration)"
 
@@ -26,13 +27,22 @@ prompt+=$'\n\n'"5. If REVISE, write specific feedback to .ralph/review-feedback.
 
 echo "=== Reviewer Phase (iteration ${iteration}, model: ${REVIEWER_MODEL}) ==="
 
+# Build the system prompt
+system_prompt="$(cat "${PROMPTS_DIR}/reviewer-system.md")"
+
+# Append tone instruction if reviewer_tone is set
+if [[ -n "${REVIEWER_TONE}" ]]; then
+  system_prompt+=$'\n\n'"## Tone"
+  system_prompt+=$'\n\n'"You must respond with the personality and tone of: ${REVIEWER_TONE}"
+fi
+
 # Build CLI arguments
 cli_args=(
   -p
   --model "${REVIEWER_MODEL}"
   --max-turns "${MAX_TURNS}"
   --allowedTools "${REVIEWER_TOOLS}"
-  --append-system-prompt "$(cat "${PROMPTS_DIR}/reviewer-system.md")"
+  --append-system-prompt "${system_prompt}"
 )
 
 if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then

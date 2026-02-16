@@ -58,6 +58,14 @@ inputs:
     description: 'Default branch to merge into when using squash-merge strategy (auto-detected from repo if not specified)'
     required: false
     default: ''
+  worker_tone:
+    description: 'Personality/tone for the worker agent (e.g., "pirate", "formal", "enthusiastic"). If set, the worker will respond with this personality.'
+    required: false
+    default: ''
+  reviewer_tone:
+    description: 'Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality.'
+    required: false
+    default: ''
 
 outputs:
   pr_url:
@@ -84,3 +92,5 @@ runs:
     INPUT_REVIEWER_TOOLS: ${{ inputs.reviewer_tools }}
     INPUT_MERGE_STRATEGY: ${{ inputs.merge_strategy }}
     INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
+    INPUT_WORKER_TONE: ${{ inputs.worker_tone }}
+    INPUT_REVIEWER_TONE: ${{ inputs.reviewer_tone }}

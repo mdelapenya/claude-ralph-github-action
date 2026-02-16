@@ -79,6 +79,8 @@ jobs:
 | `reviewer_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the reviewer can use |
 | `merge_strategy` | No | `pr` | Merge strategy: `pr` (create a pull request) or `squash-merge` (squash and push directly to default branch) |
 | `default_branch` | No | — | Default branch to merge into when using `squash-merge` strategy (auto-detected from repo if not specified) |
+| `worker_tone` | No | — | Personality/tone for the worker agent (e.g., "pirate", "formal", "enthusiastic"). If set, the worker will respond with this personality |
+| `reviewer_tone` | No | — | Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality |
 
 ## Outputs
 
@@ -147,6 +149,29 @@ Example workflow configuration for squash-merge:
 **Note:** With `squash-merge`, if the reviewer requests revisions, max iterations is reached, or the squash-merge fails for any reason, Ralph falls back to creating a PR for human review.
 
 **Security consideration:** The `squash-merge` strategy pushes directly to the default branch, bypassing pull request reviews and any branch protection rules. Only use this for low-risk, well-scoped tasks where you trust the automated review process.
+
+### Agent Tone Configuration
+
+You can configure the personality and tone of both the worker and reviewer agents. This allows agents to communicate in a specific style while still performing their tasks correctly.
+
+**Example workflow configuration:**
+
+```yaml
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    worker_tone: "pirate"
+    reviewer_tone: "professional and concise"
+```
+
+When tone is configured, the agent will respond with that personality throughout its work. For example, a worker with `worker_tone: "pirate"` might write commit messages and summaries in pirate speak, while still producing correct, functional code.
+
+**Use cases:**
+- Fun team projects where personality adds engagement
+- Formal corporate environments requiring professional tone
+- Educational contexts where enthusiastic encouragement is helpful
+
+The tone instruction is appended to the system prompt, so agents maintain their core capabilities while adopting the requested personality.
 
 ### Pull requests
 
