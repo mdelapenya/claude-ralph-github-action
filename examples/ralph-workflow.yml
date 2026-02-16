@@ -60,3 +60,13 @@ jobs:
           # trigger_label: 'ralph'
           # Optional: change base branch
           # base_branch: 'main'
+
+      # Upload Ralph context for cross-execution persistence
+      - name: Upload Ralph context artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ralph-context-issue-${{ github.event.issue.number }}
+          path: .ralph/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -116,11 +116,25 @@ else
   git checkout -B "${BRANCH_NAME}" "origin/${BASE_BRANCH}"
 fi
 
-# --- Initialize state ---
-state_init
-state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
-state_write_issue_number "${ISSUE_NUMBER}"
-state_write_iteration "0"
+# --- Restore previous context from artifacts (if available) ---
+echo ""
+echo "🔄 === Checking for Previous Context ==="
+if "${SCRIPTS_DIR}/artifact-download.sh" "${ISSUE_NUMBER}"; then
+  echo "✅ Previous context restored from artifact"
+  # Context was restored, preserve some state but update task
+  state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
+  state_write_issue_number "${ISSUE_NUMBER}"
+  # Keep existing iteration count if it exists
+  current_iteration="$(state_read_iteration)"
+  echo "   Continuing from iteration ${current_iteration}"
+else
+  echo "ℹ️  No previous context found, starting fresh"
+  # --- Initialize state ---
+  state_init
+  state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
+  state_write_issue_number "${ISSUE_NUMBER}"
+  state_write_iteration "0"
+fi
 
 # --- Write PR info for the reviewer agent (validation delegated to reviewer) ---
 {
@@ -178,6 +192,15 @@ elif [[ -f ".ralph/pr-url.txt" ]]; then
   if [[ -n "${pr_url_or_sha}" ]]; then
     echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
+fi
+
+# --- Prepare context for artifact upload ---
+echo ""
+echo "💾 === Preparing Context for Artifact Upload ==="
+if "${SCRIPTS_DIR}/artifact-upload.sh" "${ISSUE_NUMBER}"; then
+  echo "✅ Context prepared for artifact upload"
+else
+  echo "⚠️  Failed to prepare context for artifact upload (non-fatal)"
 fi
 
 # --- Set outputs ---
