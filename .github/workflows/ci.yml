@@ -7,18 +7,13 @@ on:
     branches: [main]
 
 jobs:
-  shellcheck:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Run ShellCheck
         run: shellcheck --severity=warning entrypoint.sh scripts/*.sh test/*.sh
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
       - name: Run unit tests
         run: |
@@ -28,11 +23,6 @@ jobs:
             fi
           done
 
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Run integration tests
         run: |
           for test_file in test/integration/test-*.sh; do
@@ -40,11 +30,6 @@ jobs:
               bash "${test_file}"
             fi
           done
-
-  docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
       - name: Build Docker image
         run: docker build -t claude-ralph-test .
