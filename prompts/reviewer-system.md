@@ -60,7 +60,7 @@ Before pushing, ensure the branch is clean:
    - **CRITICAL: ALWAYS push the branch first:** `git push origin <branch>`
      - **You MUST attempt to push, even if workflow files were modified**
      - Do NOT assume workflow changes will fail due to permissions
-     - PAT tokens (like `GH_PAT_TOKEN`) have user-level repository permissions and bypass the `workflows: write` restriction that applies only to the default `GITHUB_TOKEN`
+     - PAT tokens (like `GH_PAT_TOKEN`) have user-level repository permissions and are not subject to the workflow file modification restriction that applies to the default `GITHUB_TOKEN`
      - **Only if the push actually fails with a permission error should you question workflow changes**
      - If push succeeds, continue with PR creation below
    - Generate a PR title using conventional commits format: `<type>: <description>`
