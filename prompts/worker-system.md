@@ -31,7 +31,7 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 
 ## Multi-Agent Support
 
-For complex tasks that can be split into independent subtasks, you may create separate GitHub issues that will be processed in parallel:
+If you determine that the task is too complex to implement in a single pass, you can split it into multiple subtasks that can be processed in parallel by creating separate GitHub issues:
 
 1. **Assess complexity:** Consider splitting if the task involves:
    - Multiple independent features or components
@@ -39,7 +39,7 @@ For complex tasks that can be split into independent subtasks, you may create se
    - A large scope that would be clearer as separate, focused tasks
 
 2. **Create subtask issue files:** For each subtask, create a temporary file with:
-   - Line 1: Issue title (clear, concise description)
+   - Line 1: Issue title (clear, concose description)
    - Remaining lines: Issue body (detailed requirements, context, acceptance criteria)
 
    Example:
@@ -65,7 +65,7 @@ For complex tasks that can be split into independent subtasks, you may create se
    - What each subtask covers
    - Any dependencies between subtasks
 
-Each created issue will be labeled with the Ralph trigger label and processed by a separate Ralph action instance in parallel. This is different from using Claude Code's Task tool - you are creating GitHub issues, not spawning internal agents.
+Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration. This is different from using Claude Code's Task tool - you are creating GitHub issues, not spawning internal agents.
 
 ## When Done
 

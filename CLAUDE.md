@@ -41,9 +41,37 @@ RALPH_VERBOSE=true ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 INPUT_WORKER_MODEL=haiku INPUT_MAX_ITERATIONS=1 ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 ```
 
+## Key Features
+
+### State Management
+State is persisted in `.ralph/` directory (plain text files) in the working tree only and is never committed to the branch:
+- `task.md` — Issue title and body
+- `pr-info.txt` — Repo, branch, issue title, and existing PR number
+- `work-summary.txt` — Worker's summary of changes made
+- `review-result.txt` — `SHIP` or `REVISE`
+- `review-feedback.txt` — Reviewer's feedback for the next iteration
+- `pr-title.txt` — PR title in conventional commits format (set by reviewer)
+- `iteration.txt` — Current iteration number
+
+### PR Titles
+PR titles follow [conventional commits](https://www.conventionalcommits.org/) format. The reviewer agent infers the type from changes and sets the title. Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`.
+
+### Merge Strategies
+- **`pr` (default)**: Creates/updates a pull request for human review
+- **`squash-merge`**: Squashes commits and pushes directly to default branch when reviewer approves
+
+### Re-runs
+Ralph triggers on label addition or issue edits. If a branch exists, Ralph checks it out and continues from where it left off, never force-pushing.
+
+### Multi-Agent Support
+The worker can split complex tasks into multiple subtasks by creating GitHub issues via `/scripts/create-subtask-issues.sh`. Each subtask is processed by a separate Ralph instance in parallel.
+
 ## Conventions
 
 - All scripts use `set -euo pipefail` and are ShellCheck-clean at `--severity=warning`.
 - State is persisted in `.ralph/` files (plain text) in the working tree only (never committed to the branch).
 - The `RALPH_VERBOSE` env var adds `--verbose` to claude CLI calls in worker.sh and reviewer.sh.
 - Environment variables prefixed `INPUT_` map to action.yml inputs (GitHub Actions convention).
+- Worker and reviewer agents use `claude -p` (print/non-interactive mode) with `--allowedTools` for sandboxing.
+- Worker merges base branch and resolves conflicts at the start of each iteration.
+- All commits must follow conventional commits format.
