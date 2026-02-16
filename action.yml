@@ -39,9 +39,9 @@ inputs:
     required: false
     default: 'ralph'
   base_branch:
-    description: 'Branch to create the PR against'
+    description: 'Branch to create the PR against (auto-detected from repository default branch if not specified)'
     required: false
-    default: 'main'
+    default: ''
   worker_allowed_tools:
     description: 'Comma-separated tools the worker can use'
     required: false
