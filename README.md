@@ -28,6 +28,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  workflows: write  # Optional: allows Ralph to edit workflow files
 
 jobs:
   reject-pr:
@@ -172,6 +173,21 @@ When tone is configured, the agent will respond with that personality throughout
 - Educational contexts where enthusiastic encouragement is helpful
 
 The tone instruction is appended to the system prompt, so agents maintain their core capabilities while adopting the requested personality.
+
+### Permissions
+
+Ralph requires the following GitHub Actions permissions:
+
+- **`contents: write`** — Required to create branches, commit changes, and push code
+- **`pull-requests: write`** — Required to create and update pull requests
+- **`issues: write`** — Required to comment on issues
+- **`workflows: write`** — Optional, but required if you want Ralph to be able to modify workflow files in `.github/workflows/`
+
+By default, GitHub Actions [prevents actions from modifying workflow files](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) as a security measure. If you need Ralph to edit workflow files (for example, to update CI/CD configurations), add the `workflows: write` permission to your Ralph workflow.
+
+**Without `workflows: write`:** Ralph can modify all files except those in `.github/workflows/`. Push attempts that include workflow changes will fail.
+
+**With `workflows: write`:** Ralph can modify any file including workflows. Use this when tasks specifically require workflow changes.
 
 ### Pull requests
 
