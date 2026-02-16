@@ -44,9 +44,29 @@ fi
 # Get trigger label from environment or default to "ralph"
 trigger_label="${INPUT_TRIGGER_LABEL:-ralph}"
 
+# Read parent issue number to establish sub-issue relationships
+if [[ ! -f "${RALPH_DIR}/issue-number.txt" ]]; then
+  echo "❌ Error: ${RALPH_DIR}/issue-number.txt not found"
+  exit 1
+fi
+
+parent_issue_number="$(cat "${RALPH_DIR}/issue-number.txt")"
+if [[ -z "${parent_issue_number}" ]]; then
+  echo "❌ Error: Could not read parent issue number from ${RALPH_DIR}/issue-number.txt"
+  exit 1
+fi
+
+# Get the parent issue's node ID for GraphQL API
+parent_node_id="$(gh api "repos/${repo}/issues/${parent_issue_number}" --jq '.node_id')"
+if [[ -z "${parent_node_id}" ]]; then
+  echo "❌ Error: Could not retrieve node ID for parent issue #${parent_issue_number}"
+  exit 1
+fi
+
 echo "🔀 === Creating Subtask Issues ==="
 echo "📦 Repository: ${repo}"
 echo "🏷️  Trigger label: ${trigger_label}"
+echo "👪 Parent issue: #${parent_issue_number}"
 echo ""
 
 created_issues=()
@@ -84,6 +104,39 @@ for issue_file in "$@"; do
   if [[ ${exit_code} -eq 0 ]]; then
     created_issues+=("${issue_url}")
     echo "   ✅ Created: ${issue_url}"
+
+    # Extract issue number from URL (e.g., https://github.com/owner/repo/issues/123 -> 123)
+    child_issue_number="${issue_url##*/}"
+
+    # Get the node ID of the newly created issue
+    child_node_id="$(gh api "repos/${repo}/issues/${child_issue_number}" --jq '.node_id')"
+
+    if [[ -n "${child_node_id}" ]]; then
+      # Establish parent-child relationship via GraphQL API
+      # Note: This requires the GraphQL-Features: sub_issues header
+      set +e
+      gh api graphql -H "GraphQL-Features: sub_issues" -f query="
+        mutation {
+          addSubIssue(input: {
+            issueId: \"${parent_node_id}\",
+            subIssueId: \"${child_node_id}\"
+          }) {
+            issue { title }
+            subIssue { title }
+          }
+        }
+      " &>/dev/null
+      graphql_exit_code=$?
+      set -e
+
+      if [[ ${graphql_exit_code} -eq 0 ]]; then
+        echo "   🔗 Linked as sub-issue of #${parent_issue_number}"
+      else
+        echo "   ⚠️  Warning: Could not establish sub-issue relationship"
+      fi
+    else
+      echo "   ⚠️  Warning: Could not retrieve node ID for new issue"
+    fi
   else
     echo "   ❌ Failed to create issue: ${issue_url}"
   fi
