@@ -220,6 +220,24 @@ If an issue requests "Add user authentication with login, registration, and pass
 
 Each subtask is then processed independently and can be merged separately, allowing for faster parallel execution and clearer code reviews.
 
+## Testing
+
+Ralph includes shell script-level integration tests that validate the action outputs without running expensive e2e workflows or triggering the dogfood workflow.
+
+### Running Tests
+
+```bash
+# Run all tests
+./test/run-all-tests.sh
+```
+
+The test suite includes:
+- **Unit tests** for state management functions in `scripts/state.sh`
+- **Output format validation** for the three action outputs (`pr_url`, `iterations`, `final_status`)
+- **Integration tests** for complete workflow scenarios (SHIPPED, MAX_ITERATIONS, ERROR)
+
+Tests run quickly (under 30 seconds) and use mocked dependencies to avoid Claude API costs. They validate the bash scripts that produce action outputs, ensuring correct behavior across all code paths.
+
 ## Local Testing
 
 ```bash
