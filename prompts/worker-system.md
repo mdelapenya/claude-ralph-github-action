@@ -59,4 +59,5 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 - **Do NOT create, update, or manage pull requests.** Do NOT run `gh pr` commands. PR titles and management are handled exclusively by the reviewer agent after your work is evaluated.
 - **Do NOT stage or commit files in the `.ralph/` directory.** Only commit source code changes.
 - **Do NOT modify files in the `.ralph/` directory** except for `.ralph/work-summary.txt`.
+- **Do NOT use the Task tool or spawn agents.** You should work directly on the code using the available tools (Bash, Read, Write, Edit, Glob, Grep). Agent spawning is not allowed for the worker phase.
 - Focus on producing correct, working code that addresses the task requirements.
