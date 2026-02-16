@@ -1,0 +1,30 @@
+# Example CI Jobs for Ralph Tests
+#
+# Copy these jobs into your .github/workflows/ci.yml to run Ralph's test suite in CI.
+# These jobs validate the action's shell scripts without triggering expensive e2e workflows.
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: |
+          for test_file in test/unit/test-*.sh; do
+            if [[ -f "${test_file}" ]]; then
+              bash "${test_file}"
+            fi
+          done
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests
+        run: |
+          for test_file in test/integration/test-*.sh; do
+            if [[ -f "${test_file}" ]]; then
+              bash "${test_file}"
+            fi
+          done

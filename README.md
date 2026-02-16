@@ -238,6 +238,10 @@ The test suite includes:
 
 Tests run quickly (under 30 seconds) and use mocked dependencies to avoid Claude API costs. They validate the bash scripts that produce action outputs, ensuring correct behavior across all code paths.
 
+### CI Integration
+
+To run tests in your CI workflow, copy the job definitions from `test/ci-example.yml` into your `.github/workflows/ci.yml`. The example includes separate jobs for unit and integration tests.
+
 ## Local Testing
 
 ```bash
