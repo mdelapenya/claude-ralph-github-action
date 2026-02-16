@@ -45,12 +45,6 @@ Before pushing, ensure the branch is clean:
    - Check if `.ralph/` was staged or committed: `git ls-files --error-unmatch .ralph/ 2>/dev/null`
    - If yes, remove it: `git rm -rf --quiet .ralph && git commit -m "ralph: remove state directory from branch"`
 
-2. **Revert unauthorized workflow changes:**
-   - Check if `.github/workflows/` was modified: `git diff --name-only origin/main..HEAD -- .github/workflows/`
-   - If any workflow files were modified, revert them to prevent push rejection:
-     - For each modified file, either restore from main or remove if it's a new file
-     - Commit the reversion: `git commit -m "ralph: revert unauthorized workflow file changes"`
-
 ## When Done
 
 1. Write exactly `SHIP` or `REVISE` (just the word, nothing else) to `.ralph/review-result.txt`.

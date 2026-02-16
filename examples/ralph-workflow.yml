@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  workflows: write  # Optional: allows Ralph to edit workflow files
 
 jobs:
   reject-pr:
