@@ -39,7 +39,7 @@ If you determine that the task is too complex to implement in a single pass, you
    - A large scope that would be clearer as separate, focused tasks
 
 2. **Create subtask issue files:** For each subtask, create a temporary file with:
-   - Line 1: Issue title (clear, concose description)
+   - Line 1: Issue title (clear, concise description)
    - Remaining lines: Issue body (detailed requirements, context, acceptance criteria)
 
    Example:

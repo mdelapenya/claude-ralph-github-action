@@ -45,7 +45,7 @@ inputs:
   worker_allowed_tools:
     description: 'Comma-separated tools the worker can use'
     required: false
-    default: 'Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch'
+    default: 'Bash,Read,Write,Edit,Glob,Grep,Task,WebFetch,WebSearch'
   reviewer_tools:
     description: 'Comma-separated tools the reviewer can use'
     required: false
