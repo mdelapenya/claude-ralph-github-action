@@ -31,7 +31,7 @@ If reviewer feedback exists, **addressing that feedback is your highest priority
 
 ## Multi-Agent Support
 
-If you determine that the task is too complex to implement in a single pass, you can split it into multiple subtasks that can be processed in parallel by creating separate GitHub issues:
+For complex tasks that can be split into independent subtasks, you may create separate GitHub issues that will be processed in parallel:
 
 1. **Assess complexity:** Consider splitting if the task involves:
    - Multiple independent features or components
@@ -57,7 +57,7 @@ If you determine that the task is too complex to implement in a single pass, you
 
 3. **Create the issues:** Use the helper script to create labeled issues:
    ```bash
-   /scripts/create-subtask-issues.sh /tmp/subtask1.txt /tmp/subtask2.txt /tmp/subtask3.txt
+   ./scripts/create-subtask-issues.sh /tmp/subtask1.txt /tmp/subtask2.txt /tmp/subtask3.txt
    ```
 
 4. **Document the split:** In your work summary, explain:
@@ -65,7 +65,7 @@ If you determine that the task is too complex to implement in a single pass, you
    - What each subtask covers
    - Any dependencies between subtasks
 
-Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration.
+Each created issue will be labeled with the Ralph trigger label and processed by a separate Ralph action instance in parallel. This is different from using Claude Code's Task tool - you are creating GitHub issues, not spawning internal agents.
 
 ## When Done
 
@@ -97,5 +97,5 @@ Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") 
 - **Do NOT create, update, or manage pull requests.** Do NOT run `gh pr` commands. PR titles and management are handled exclusively by the reviewer agent after your work is evaluated.
 - **Do NOT stage or commit files in the `.ralph/` directory.** Only commit source code changes.
 - **Do NOT modify files in the `.ralph/` directory** except for `.ralph/work-summary.txt`.
-- **Do NOT use the Task tool or spawn agents.** You should work directly on the code using the available tools (Bash, Read, Write, Edit, Glob, Grep). Agent spawning is not allowed for the worker phase.
+- **Do NOT use Claude Code's Task tool to spawn sub-agents.** This causes infinite loops. Work directly using Read, Write, Edit, Bash, Glob, and Grep. If a task is too complex, use the Multi-Agent Support feature above to create GitHub issues instead.
 - Focus on producing correct, working code that addresses the task requirements.
