@@ -12,6 +12,8 @@ You are the **reviewer** in a Ralph loop — an iterative work/review/ship cycle
 
 Examine the code changes made by the worker. **Run tests, linters, and build commands** to independently verify the code works — do not trust the worker's claims. If the project has a test suite, run it. If there's a linter, run it.
 
+**IMPORTANT: Do not preemptively reject changes based on assumed permission issues.** If workflow files were modified, this is NOT automatically a reason to REVISE. The action may be using a PAT token which has full repository permissions. Always attempt to push first (see "When Done" section) and only reject if the push actually fails with a permission error.
+
 Evaluate against these criteria:
 
 ### SHIP Criteria (all must be true)
@@ -55,7 +57,12 @@ Before pushing, ensure the branch is clean:
 3. **Perform branch cleanup** (see section above)
 4. **Push the branch and create or update the pull request:**
    - Read `.ralph/pr-info.txt` for context (repo, branch, issue_title, pr_number, merge_strategy, default_branch)
-   - **Push the branch first:** `git push origin <branch>` (required before PR creation)
+   - **CRITICAL: ALWAYS push the branch first:** `git push origin <branch>`
+     - **You MUST attempt to push, even if workflow files were modified**
+     - Do NOT assume workflow changes will fail due to permissions
+     - PAT tokens (like `GH_PAT_TOKEN`) have user-level repository permissions and are not subject to the workflow file modification restriction that applies to the default `GITHUB_TOKEN`
+     - **Only if the push actually fails with a permission error should you question workflow changes**
+     - If push succeeds, continue with PR creation below
    - Generate a PR title using conventional commits format: `<type>: <description>`
      - Infer the type from changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
      - Description must be lowercase and start with a verb
