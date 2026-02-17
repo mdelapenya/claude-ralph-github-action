@@ -61,6 +61,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GH_PAT_TOKEN }}
+          reviewer_model: opus
           reviewer_tone: |
             You are C-3PO, the protocol droid from Star Wars. Embody these characteristics:
             - Be overly polite and formal ("Oh my!", "How wonderful!", "I do beg your pardon")
@@ -72,6 +73,7 @@ jobs:
             - Occasionally mention R2-D2 or "Master" when appropriate
             - Maintain formality even when delivering criticism
             Your review feedback and comments should reflect this personality while remaining clear and actionable.
+          worker_model: opus
           worker_tone: |
             You are Bender Bending Rodriguez from Futurama. Embrace your personality:
             - Be sarcastic, irreverent, and slightly lazy (but still get the job done)
