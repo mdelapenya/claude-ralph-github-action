@@ -39,28 +39,34 @@ Because the dogfood workflow runs with the default `GITHUB_TOKEN`, it cannot mod
 
 ## How It Works
 
-The dogfood workflow references these variables in the action inputs:
+Once the repository variables are created (see above), the dogfood workflow needs to be updated to reference them in the action inputs.
+
+**⚠️ Important: Manual Workflow Update Required**
+
+Due to GitHub security restrictions, the workflow file `.github/workflows/dogfood.yml` cannot be modified by automated processes without the `workflows` permission. Someone with appropriate repository permissions (e.g., a repository admin or someone with a Personal Access Token with `workflows` scope) needs to manually add the following two lines to the workflow file:
+
+In `.github/workflows/dogfood.yml`, add these two input parameters to the action (around line 60-61, after `github_token:`):
 
 ```yaml
 - uses: ./
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     github_token: ${{ secrets.GH_PAT_TOKEN }}
-    worker_tone: ${{ vars.RALPH_WORKER_TONE }}
-    reviewer_tone: ${{ vars.RALPH_REVIEWER_TONE }}
+    worker_tone: ${{ vars.RALPH_WORKER_TONE }}        # ADD THIS LINE
+    reviewer_tone: ${{ vars.RALPH_REVIEWER_TONE }}    # ADD THIS LINE
 ```
 
-When these variables are set, they're passed as environment variables (`INPUT_WORKER_TONE` and `INPUT_REVIEWER_TONE`) to the Docker container, and the worker and reviewer scripts append them to their system prompts.
+Once these lines are added, the variables will be passed as environment variables (`INPUT_WORKER_TONE` and `INPUT_REVIEWER_TONE`) to the Docker container, and the worker and reviewer scripts will automatically append them to their system prompts.
 
 ## Changing Personalities
 
-To change the agent personalities:
+After the initial workflow file setup (see above), changing personalities is easy:
 
 1. Go to **Settings** > **Secrets and variables** > **Actions** > **Variables**
 2. Edit the `RALPH_WORKER_TONE` or `RALPH_REVIEWER_TONE` variables
 3. Save the changes
 
-The new personalities will take effect on the next Ralph run. No workflow file modifications or commits are needed.
+The new personalities will take effect on the next Ralph run. No additional workflow file modifications or commits are needed once the initial setup is complete.
 
 ## Why Repository Variables?
 
