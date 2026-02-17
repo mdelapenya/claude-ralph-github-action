@@ -156,6 +156,16 @@ Example workflow configuration for squash-merge:
 
 You can configure the personality and tone of both the worker and reviewer agents. This allows agents to communicate in a specific style while still performing their tasks correctly.
 
+**Example workflow configuration:**
+
+```yaml
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    worker_tone: "pirate"
+    reviewer_tone: "professional and concise"
+```
+
 When tone is configured, the agent will respond with that personality throughout its work. For example, a worker with `worker_tone: "pirate"` might write commit messages and summaries in pirate speak, while still producing correct, functional code.
 
 **Use cases:**
