@@ -9,6 +9,8 @@ When you label an issue, Ralph:
 4. If the reviewer says **REVISE**, loops back to step 2 with feedback
 5. If the reviewer says **SHIP**, pushes the branch and opens a PR
 
+![Ralph Loop](https://i.giphy.com/3wr2cnwlghNomDeN9W.webp)
+
 ## Quick Start
 
 1. Add `ANTHROPIC_API_KEY` as a [repository secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)
