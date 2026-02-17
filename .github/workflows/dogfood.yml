@@ -36,7 +36,7 @@ jobs:
     if: >-
       (github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
       (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
-      (github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot')
+      (github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:

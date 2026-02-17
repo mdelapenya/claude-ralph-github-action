@@ -77,8 +77,8 @@ ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
 IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
 
 # --- Fetch all issue comments to compound the context ---
-# Comments provide additional context for agents. To trigger Ralph after adding a comment,
-# edit the issue (e.g., update description or title). Ralph will fetch all comments automatically.
+# Comments provide additional context for agents. New comments on a labeled issue
+# automatically trigger a Ralph run via the issue_comment.created workflow event.
 echo "💬 Fetching issue comments..."
 ISSUE_COMMENTS=""
 if command -v gh &> /dev/null; then
