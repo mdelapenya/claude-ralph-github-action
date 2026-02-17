@@ -33,7 +33,7 @@ system_prompt="$(cat "${PROMPTS_DIR}/reviewer-system.md")"
 # Append tone instruction if reviewer_tone is set
 if [[ -n "${REVIEWER_TONE}" ]]; then
   system_prompt+=$'\n\n'"## Tone"
-  system_prompt+=$'\n\n'"You must respond with the personality and tone of: ${REVIEWER_TONE}"
+  system_prompt+=$'\n\n'"You must respond with the following personality and tone: ${REVIEWER_TONE}"
 fi
 
 # Build CLI arguments
