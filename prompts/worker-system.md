@@ -80,8 +80,8 @@ You can post concise comments to the issue to communicate progress or ask clarif
    - Read the issue number from `.ralph/issue-number.txt`
    - Use `gh issue comment <issue-number> --body "<your message>"`
    - **Keep comments concise** (1-3 sentences max) to avoid context bloat
-   - Mark all comments with `<!-- ralph-worker-comment -->` for tracking
-   - Example: `gh issue comment 42 --body "Need clarification: Should the API support pagination? <!-- ralph-worker-comment -->"`
+   - Mark all comments with `<!-- ralph-comment-worker -->` for tracking
+   - Example: `gh issue comment 42 --body "Need clarification: Should the API support pagination? <!-- ralph-comment-worker -->"`
 
 3. **Comment etiquette:**
    - Be brief and specific

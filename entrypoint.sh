@@ -83,7 +83,7 @@ echo "💬 Fetching issue comments..."
 ISSUE_COMMENTS=""
 if command -v gh &> /dev/null; then
   # Fetch comments from the issue, excluding bot comments
-  ISSUE_COMMENTS="$(gh issue view "${ISSUE_NUMBER}" --json comments --jq '.comments[] | select(.author.login != "claude-ralph[bot]") | "## Comment by @\(.author.login) on \(.createdAt)\n\n\(.body)\n"' 2>/dev/null || echo "")"
+  ISSUE_COMMENTS="$(gh issue view "${ISSUE_NUMBER}" --json comments --jq '.comments[] | select(.body | contains("<!-- ralph-comment-") | not) | "## Comment by @\(.author.login) on \(.createdAt)\n\n\(.body)\n"' 2>/dev/null || echo "")"
   if [[ -n "${ISSUE_COMMENTS}" ]]; then
     echo "✅ Found $(echo "${ISSUE_COMMENTS}" | grep -c "^## Comment by" || echo 0) user comments"
   else
