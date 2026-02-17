@@ -156,7 +156,29 @@ Example workflow configuration for squash-merge:
 
 You can configure the personality and tone of both the worker and reviewer agents. This allows agents to communicate in a specific style while still performing their tasks correctly.
 
-**Example workflow configuration:**
+#### Using Repository Variables (Recommended)
+
+To avoid modifying workflow files (which requires the `workflows` permission), configure agent tones using [GitHub repository variables](https://docs.github.com/en/actions/learn-github-actions/variables):
+
+1. Go to **Settings** > **Secrets and variables** > **Actions** > **Variables** tab
+2. Create two repository variables:
+   - `RALPH_WORKER_TONE` — Personality for the worker agent
+   - `RALPH_REVIEWER_TONE` — Personality for the reviewer agent
+3. Reference them in your workflow:
+
+```yaml
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    worker_tone: ${{ vars.RALPH_WORKER_TONE }}
+    reviewer_tone: ${{ vars.RALPH_REVIEWER_TONE }}
+```
+
+See [docs/DOGFOOD_SETUP.md](docs/DOGFOOD_SETUP.md) for a complete example of setting up agent personalities using repository variables.
+
+#### Using Inline Values
+
+For workflows where you have the `workflows` permission (via a PAT token), you can hardcode tones directly:
 
 ```yaml
 - uses: mdelapenya/claude-ralph-github-action@v1
