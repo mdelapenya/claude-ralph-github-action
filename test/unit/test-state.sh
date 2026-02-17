@@ -144,6 +144,79 @@ test_state_write_read_task() {
   echo "PASS: state_write_task creates task.md correctly"
 }
 
+test_state_write_task_with_comments() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Use $'...' ANSI-C quoting to produce real newlines, matching what jq emits in production
+  local comments
+  comments=$'## Comment by @user1 on 2025-02-16T10:30:00Z\n\nThis is a comment\n\n## Comment by @user2 on 2025-02-16T11:00:00Z\n\nAnother comment'
+  state_write_task "Test Title" "Test body content" "${comments}"
+
+  if [[ ! -f ".ralph/task.md" ]]; then
+    echo "FAIL: task.md should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "# Test Title" .ralph/task.md; then
+    echo "FAIL: task.md should contain the title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Test body content" .ralph/task.md; then
+    echo "FAIL: task.md should contain the body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Issue Comments" .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comments section"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify multi-line structure: comment headers and bodies on separate lines
+  if ! grep -q "^## Comment by @user1" .ralph/task.md; then
+    echo "FAIL: task.md should contain user1 comment header on its own line"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "^This is a comment$" .ralph/task.md; then
+    echo "FAIL: task.md should contain user1 comment body on its own line"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "^## Comment by @user2" .ralph/task.md; then
+    echo "FAIL: task.md should contain user2 comment header"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "^Another comment$" .ralph/task.md; then
+    echo "FAIL: task.md should contain user2 comment body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task with comments works correctly"
+}
+
 test_state_write_read_issue_number() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -219,6 +292,7 @@ main() {
   test_state_read_iteration_default || failed=$((failed + 1))
   test_state_review_result_normalization || failed=$((failed + 1))
   test_state_write_read_task || failed=$((failed + 1))
+  test_state_write_task_with_comments || failed=$((failed + 1))
   test_state_write_read_issue_number || failed=$((failed + 1))
   test_state_write_read_work_summary || failed=$((failed + 1))
   test_state_write_read_final_status || failed=$((failed + 1))

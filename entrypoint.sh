@@ -76,6 +76,23 @@ ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"
 ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
 IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
 
+# --- Fetch all issue comments to compound the context ---
+# Comments provide additional context for agents. New comments on a labeled issue
+# automatically trigger a Ralph run via the issue_comment.created workflow event.
+echo "💬 Fetching issue comments..."
+ISSUE_COMMENTS=""
+if command -v gh &> /dev/null; then
+  # Fetch comments from the issue, excluding Ralph-authored comments (identified by marker)
+  ISSUE_COMMENTS="$(gh issue view "${ISSUE_NUMBER}" --json comments --jq '.comments[] | select(.body | contains("<!-- ralph-comment-") | not) | "## Comment by @\(.author.login) on \(.createdAt)\n\n\(.body)\n"' 2>/dev/null || echo "")"
+  if [[ -n "${ISSUE_COMMENTS}" ]]; then
+    echo "✅ Found $(echo "${ISSUE_COMMENTS}" | grep -c "^## Comment by" || echo 0) user comments"
+  else
+    echo "ℹ️  No user comments found on issue"
+  fi
+else
+  echo "⚠️  gh command not available, skipping comment fetch"
+fi
+
 # --- Reject pull requests ---
 if [[ -n "${IS_PULL_REQUEST}" ]]; then
   echo "⚠️  Ralph was triggered on a pull request (#${ISSUE_NUMBER}), not an issue. Skipping."
@@ -118,7 +135,7 @@ fi
 
 # --- Initialize state ---
 state_init
-state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}"
+state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}" "${ISSUE_COMMENTS}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_iteration "0"
 

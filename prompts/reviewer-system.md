@@ -129,20 +129,19 @@ When the validated `merge_strategy` is `pr` or when you decide to REVISE, follow
 
 ## Issue Commenting
 
-After completing your review, post a comment on the issue to inform the user:
+After completing your review, post a **concise** comment on the issue to inform the user:
 
 1. Read the issue number from `.ralph/issue-number.txt`
 2. Read the repo from `.ralph/pr-info.txt`
-3. If you decided to SHIP and merge_strategy is squash-merge (and merge was successful):
-   - Comment on the issue with the commit SHA and close it
-4. Otherwise (PR mode or REVISE):
-   - Check if a Ralph end comment exists: `gh api "repos/<repo>/issues/<issue>/comments" --jq '.[] | select(.body | contains("<!-- ralph-end-comment -->")) | .id'`
-   - Build appropriate comment based on your decision:
-     - SHIP: "The task has been implemented and approved after X iteration(s). PR: <url>"
-     - REVISE: Include iteration count and note that work continues
+3. **Keep comments brief** (2-4 sentences max) to avoid context bloat:
+   - SHIP: "✅ Iteration X: Task complete. PR: <url> <!-- ralph-comment-end -->"
+   - REVISE: "🔄 Iteration X: Revising. <one-sentence summary of main issue> <!-- ralph-comment-end -->"
+   - Squash-merge success: "✅ Merged to <branch> after X iteration(s). Commit: <sha> <!-- ralph-comment-end -->"
+4. Update or create the comment:
+   - Check if a Ralph end comment exists: `gh api "repos/<repo>/issues/<issue>/comments" --jq '.[] | select(.body | contains("<!-- ralph-comment-end -->")) | .id' | tail -1`
    - If an end comment exists, update it with `gh api "repos/<repo>/issues/comments/<id>" -X PATCH -f body="<comment>"`
    - Otherwise create new comment: `gh issue comment <issue> --repo <repo> --body "<comment>"`
-   - Always include the marker `<!-- ralph-end-comment -->` in your comments
+   - Always include the marker `<!-- ralph-comment-end -->` in your comments
 
 ## Rules
 

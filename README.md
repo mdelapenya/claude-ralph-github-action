@@ -23,6 +23,8 @@ name: Ralph Loop
 on:
   issues:
     types: [labeled, edited]
+  issue_comment:
+    types: [created]
   pull_request:
     types: [labeled]
 
@@ -47,7 +49,8 @@ jobs:
   ralph:
     if: >-
       (github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
-      (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph'))
+      (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
+      (github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -121,13 +124,14 @@ Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
 
 If a PR already exists (on re-runs), the reviewer updates the title directly via `gh pr edit`. On the first run, the reviewer writes the title to `.ralph/pr-title.txt` and the orchestration uses it when creating the PR.
 
-### Re-runs and Issue Edits
+### Triggers and Re-runs
 
-Ralph triggers in two ways:
+Ralph triggers in three ways:
 - **Label added:** When the `ralph` label is added to an issue (first run or re-trigger by removing and re-adding the label).
 - **Issue edited:** When an issue that already has the `ralph` label is edited (title or body changed). This lets you refine requirements and have Ralph re-process the updated task.
+- **Comment added:** When a new comment is posted on an issue that has the `ralph` label. This enables a conversational workflow where you can give Ralph follow-up instructions via comments. Ralph's own comments (identified by `<!-- ralph-comment-* -->` markers) do not retrigger the workflow. This works with the standard `GITHUB_TOKEN` — no PAT is required.
 
-In both cases, Ralph detects the existing branch if one exists, checks it out, and continues from where it left off. The worker re-reads the task from the issue (which may have changed) and the branch's commit history to understand what was already done. New commits are added on top — Ralph never force-pushes.
+In all cases, Ralph detects the existing branch if one exists, checks it out, and continues from where it left off. The worker re-reads the task from the issue (which may have changed) and the branch's commit history to understand what was already done. New commits are added on top — Ralph never force-pushes.
 
 ### Merge Strategies
 

@@ -14,15 +14,28 @@ state_init() {
 }
 
 # Write the task description from the issue
-# Args: $1 = issue title, $2 = issue body
+# Args: $1 = issue title, $2 = issue body, $3 = issue comments (optional)
 state_write_task() {
   local title="$1"
   local body="$2"
+  local comments="${3:-}"
   cat > "${RALPH_DIR}/task.md" <<EOF
 # ${title}
 
 ${body}
 EOF
+
+  # Append comments if provided
+  if [[ -n "${comments}" ]]; then
+    cat >> "${RALPH_DIR}/task.md" <<EOF
+
+---
+
+# Issue Comments
+
+${comments}
+EOF
+  fi
 }
 
 # Write the issue number

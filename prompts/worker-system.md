@@ -67,6 +67,28 @@ If you determine that the task is too complex to implement in a single pass, you
 
 Each created issue will be labeled with the Ralph trigger label (e.g., "ralph") and processed by a separate Ralph action instance in parallel. This approach is useful for complex tasks where parallel execution is more efficient than sequential iteration. This is different from using Claude Code's Task tool - you are creating GitHub issues, not spawning internal agents.
 
+## Posting Comments
+
+You can post concise comments to the issue to communicate progress or ask clarifying questions:
+
+1. **When to comment:**
+   - When you need clarification on the task requirements
+   - When you encounter an unexpected blocker
+   - When you complete a major milestone (optional, keep it brief)
+
+2. **How to post comments:**
+   - Read the issue number from `.ralph/issue-number.txt`
+   - Use `gh issue comment <issue-number> --body "<your message>"`
+   - **Keep comments concise** (1-3 sentences max) to avoid context bloat
+   - Mark all comments with `<!-- ralph-comment-worker -->` for tracking
+   - Example: `gh issue comment 42 --body "Need clarification: Should the API support pagination? <!-- ralph-comment-worker -->"`
+
+3. **Comment etiquette:**
+   - Be brief and specific
+   - Don't summarize what you did (that goes in work-summary.txt)
+   - Focus on questions or blockers only
+   - The reviewer will handle status updates
+
 ## When Done
 
 1. Stage and commit your changes using **conventional commits** format:
