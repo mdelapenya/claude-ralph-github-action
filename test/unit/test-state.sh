@@ -144,6 +144,54 @@ test_state_write_read_task() {
   echo "PASS: state_write_task creates task.md correctly"
 }
 
+test_state_write_task_with_comments() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_task "Test Title" "Test body content" "## Comment by @user1\n\nThis is a comment"
+
+  if [[ ! -f ".ralph/task.md" ]]; then
+    echo "FAIL: task.md should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "# Test Title" .ralph/task.md; then
+    echo "FAIL: task.md should contain the title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Test body content" .ralph/task.md; then
+    echo "FAIL: task.md should contain the body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Issue Comments" .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comments section"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "This is a comment" .ralph/task.md; then
+    echo "FAIL: task.md should contain the comment content"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task with comments works correctly"
+}
+
 test_state_write_read_issue_number() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -219,6 +267,7 @@ main() {
   test_state_read_iteration_default || failed=$((failed + 1))
   test_state_review_result_normalization || failed=$((failed + 1))
   test_state_write_read_task || failed=$((failed + 1))
+  test_state_write_task_with_comments || failed=$((failed + 1))
   test_state_write_read_issue_number || failed=$((failed + 1))
   test_state_write_read_work_summary || failed=$((failed + 1))
   test_state_write_read_final_status || failed=$((failed + 1))
