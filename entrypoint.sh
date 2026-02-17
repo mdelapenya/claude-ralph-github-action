@@ -82,7 +82,7 @@ IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
 echo "💬 Fetching issue comments..."
 ISSUE_COMMENTS=""
 if command -v gh &> /dev/null; then
-  # Fetch comments from the issue, excluding bot comments
+  # Fetch comments from the issue, excluding Ralph-authored comments (identified by marker)
   ISSUE_COMMENTS="$(gh issue view "${ISSUE_NUMBER}" --json comments --jq '.comments[] | select(.body | contains("<!-- ralph-comment-") | not) | "## Comment by @\(.author.login) on \(.createdAt)\n\n\(.body)\n"' 2>/dev/null || echo "")"
   if [[ -n "${ISSUE_COMMENTS}" ]]; then
     echo "✅ Found $(echo "${ISSUE_COMMENTS}" | grep -c "^## Comment by" || echo 0) user comments"
