@@ -37,7 +37,7 @@ system_prompt="$(cat "${PROMPTS_DIR}/worker-system.md")"
 # Append tone instruction if worker_tone is set
 if [[ -n "${WORKER_TONE}" ]]; then
   system_prompt+=$'\n\n'"## Tone"
-  system_prompt+=$'\n\n'"You must respond with the personality and tone of: ${WORKER_TONE}"
+  system_prompt+=$'\n\n'"You must respond with the following personality and tone: ${WORKER_TONE}"
 fi
 
 # Build CLI arguments
