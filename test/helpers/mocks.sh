@@ -140,6 +140,10 @@ case "${1:-}" in
       comment)
         echo "Comment posted"
         ;;
+      view)
+        # Return empty comments
+        echo ""
+        ;;
       *)
         echo "mock gh issue: unknown subcommand ${2:-}"
         ;;
@@ -154,6 +158,13 @@ case "${1:-}" in
         echo "mock gh repo: unknown subcommand ${2:-}"
         ;;
     esac
+    ;;
+  api)
+    # Log API calls for test verification
+    log_file="${MOCK_GH_API_LOG:-/dev/null}"
+    echo "gh api $*" >> "${log_file}"
+    # Return a minimal JSON response for reactions
+    echo '{"id":1,"content":"+1"}'
     ;;
   *)
     echo "mock gh: unknown command ${1:-}"

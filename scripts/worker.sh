@@ -18,6 +18,27 @@ WORKER_TONE="${INPUT_WORKER_TONE:-}"
 iteration="$(state_read_iteration)"
 feedback="$(state_read_review_feedback)"
 
+# React with +1 to the triggering issue or comment on the first iteration
+if [[ "${iteration}" -eq 1 ]]; then
+  issue_number="$(state_read_issue_number)"
+  comment_id="$(state_read_event_comment_id)"
+  repo="${GITHUB_REPOSITORY:-}"
+
+  if [[ -n "${repo}" && -n "${issue_number}" ]]; then
+    if [[ -n "${comment_id}" ]]; then
+      # Comment event: react to the comment
+      echo "👍 Reacting to comment #${comment_id} on issue #${issue_number}"
+      gh api "repos/${repo}/issues/comments/${comment_id}/reactions" \
+        -f content="+1" --silent 2>/dev/null || true
+    else
+      # Issue event (labeled/edited): react to the issue
+      echo "👍 Reacting to issue #${issue_number}"
+      gh api "repos/${repo}/issues/${issue_number}/reactions" \
+        -f content="+1" --silent 2>/dev/null || true
+    fi
+  fi
+fi
+
 # Build the worker prompt - agent reads state files directly
 prompt="You are on iteration ${iteration} of a Ralph loop. Work on the task."
 prompt+=$'\n\n'"Read .ralph/task.md for the task description."

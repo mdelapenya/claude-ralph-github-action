@@ -81,18 +81,50 @@ setup_test_env() {
 
 # Write a valid GitHub event JSON file
 # Args: $1 = tmpdir to write event.json into
+# Configurable via env vars:
+#   MOCK_ISSUE_NUMBER      - issue number (default: 42)
+#   MOCK_ISSUE_TITLE       - issue title
+#   MOCK_ISSUE_BODY        - issue body
+#   MOCK_EVENT_ACTION      - event action (default: "labeled")
+#   MOCK_COMMENT_ID        - if set, includes a comment object in the event
 create_event_json() {
   local tmpdir="$1"
   local issue_number="${MOCK_ISSUE_NUMBER:-42}"
   local issue_title="${MOCK_ISSUE_TITLE:-Test issue title}"
   local issue_body="${MOCK_ISSUE_BODY:-Test issue body with requirements}"
+  local event_action="${MOCK_EVENT_ACTION:-labeled}"
+  local comment_id="${MOCK_COMMENT_ID:-}"
 
-  cat > "${tmpdir}/event.json" <<EOF
-{
-  "action": "labeled",
+  local comment_block=""
+  if [[ -n "${comment_id}" ]]; then
+    comment_block="$(cat <<COMMENT
+  "comment": {
+    "id": ${comment_id},
+    "user": {
+      "login": "testuser",
+      "type": "User"
+    },
+    "body": "Test comment body"
+  },
+COMMENT
+)"
+  fi
+
+  local label_block=""
+  if [[ "${event_action}" == "labeled" ]]; then
+    label_block="$(cat <<LABEL
   "label": {
     "name": "ralph"
   },
+LABEL
+)"
+  fi
+
+  cat > "${tmpdir}/event.json" <<EOF
+{
+  "action": "${event_action}",
+${label_block}
+${comment_block}
   "issue": {
     "number": ${issue_number},
     "title": "${issue_title}",
