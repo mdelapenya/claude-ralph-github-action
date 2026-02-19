@@ -297,6 +297,213 @@ test_script_exit_code_with_changes() {
   echo "PASS: script exits with code 0 when workflow changes exist"
 }
 
+# Helper: install a pre-receive hook on the bare repo that rejects
+# pushes containing workflow files in the tree
+_install_workflow_rejection_hook() {
+  local bare_repo="$1"
+  mkdir -p "${bare_repo}/hooks"
+  cat > "${bare_repo}/hooks/pre-receive" <<'HOOK'
+#!/bin/bash
+while read oldrev newrev refname; do
+  if git ls-tree -r --name-only "$newrev" 2>/dev/null | grep -q "^\.github/workflows/"; then
+    echo "ERROR: Push rejected - workflow file modifications are not allowed" >&2
+    exit 1
+  fi
+done
+HOOK
+  chmod +x "${bare_repo}/hooks/pre-receive"
+}
+
+# Helper: create a simple mock gh that logs calls to a file
+_setup_mock_gh() {
+  local mock_dir="$1"
+  local log_file="$2"
+  mkdir -p "${mock_dir}"
+  cat > "${mock_dir}/gh" <<MOCK
+#!/bin/bash
+echo "\$*" >> "${log_file}"
+# Return empty for API calls that check for existing comments (jq queries)
+if [[ "\$1" == "api" ]] && [[ "\$*" == *"--jq"* ]]; then
+  exit 0
+fi
+echo "mock-ok"
+MOCK
+  chmod +x "${mock_dir}/gh"
+  export PATH="${mock_dir}:${PATH}"
+}
+
+test_push_fallback_already_pushed() {
+  local tmpdir
+  tmpdir="$(_create_repo_without_workflow_changes)"
+  cd "${tmpdir}/workspace"
+
+  # Push the branch first so it's already up to date
+  git push origin feature-branch > /dev/null 2>&1
+
+  local exit_code=0
+  push_with_workflow_fallback "feature-branch" "origin/main" "42" "test/repo" 2>/dev/null || exit_code=$?
+
+  if [[ ${exit_code} -ne 2 ]]; then
+    echo "FAIL: push_with_workflow_fallback should return 2 when already pushed, got ${exit_code}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  rm -rf "${tmpdir}"
+  echo "PASS: push_with_workflow_fallback returns 2 when branch is already up to date"
+}
+
+test_push_fallback_normal_push() {
+  local tmpdir
+  tmpdir="$(_create_repo_without_workflow_changes)"
+  cd "${tmpdir}/workspace"
+
+  local exit_code=0
+  push_with_workflow_fallback "feature-branch" "origin/main" "42" "test/repo" 2>/dev/null || exit_code=$?
+
+  if [[ ${exit_code} -ne 0 ]]; then
+    echo "FAIL: push_with_workflow_fallback should return 0 on successful push, got ${exit_code}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify push succeeded
+  local local_head remote_head
+  local_head="$(git rev-parse HEAD)"
+  remote_head="$(git rev-parse "origin/feature-branch" 2>/dev/null || echo "")"
+  if [[ "${local_head}" != "${remote_head}" ]]; then
+    echo "FAIL: branch should have been pushed"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  rm -rf "${tmpdir}"
+  echo "PASS: push_with_workflow_fallback succeeds on normal push"
+}
+
+test_push_fallback_handles_workflow_rejection() {
+  local tmpdir
+  tmpdir="$(_create_repo_with_workflow_changes)"
+  cd "${tmpdir}/workspace"
+
+  # Install pre-receive hook that rejects workflow files
+  _install_workflow_rejection_hook "${tmpdir}/remote.git"
+
+  # Set up mock gh to track calls
+  local original_path="${PATH}"
+  local gh_log="${tmpdir}/gh-calls.log"
+  touch "${gh_log}"
+  _setup_mock_gh "${tmpdir}/mock-bin" "${gh_log}"
+
+  local exit_code=0
+  push_with_workflow_fallback "feature-branch" "origin/main" "42" "test/repo" 2>/dev/null || exit_code=$?
+
+  if [[ ${exit_code} -ne 0 ]]; then
+    echo "FAIL: push_with_workflow_fallback should return 0 after fallback, got ${exit_code}"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify push succeeded (after removing workflow files)
+  local local_head remote_head
+  local_head="$(git rev-parse HEAD)"
+  remote_head="$(git rev-parse "origin/feature-branch" 2>/dev/null || echo "")"
+  if [[ "${local_head}" != "${remote_head}" ]]; then
+    echo "FAIL: branch should have been pushed after workflow removal"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify workflow files were removed
+  if has_workflow_changes "origin/main"; then
+    echo "FAIL: workflow changes should have been removed"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify gh was called to post a comment
+  if [[ ! -s "${gh_log}" ]]; then
+    echo "FAIL: gh should have been called to post a comment"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "issue comment" "${gh_log}"; then
+    echo "FAIL: gh should have been called with 'issue comment', got: $(cat "${gh_log}")"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify the removal commit exists
+  local last_commit
+  last_commit="$(git log -1 --format="%s")"
+  if [[ "${last_commit}" != *"remove workflow changes"* ]]; then
+    echo "FAIL: expected removal commit, got: ${last_commit}"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  export PATH="${original_path}"
+  rm -rf "${tmpdir}"
+  echo "PASS: push_with_workflow_fallback handles workflow rejection correctly"
+}
+
+test_push_fallback_updates_existing_comment() {
+  local tmpdir
+  tmpdir="$(_create_repo_with_workflow_changes)"
+  cd "${tmpdir}/workspace"
+
+  # Install pre-receive hook that rejects workflow files
+  _install_workflow_rejection_hook "${tmpdir}/remote.git"
+
+  # Set up mock gh that returns an existing comment ID for the API call
+  local original_path="${PATH}"
+  local gh_log="${tmpdir}/gh-calls.log"
+  touch "${gh_log}"
+  local mock_dir="${tmpdir}/mock-bin"
+  mkdir -p "${mock_dir}"
+  cat > "${mock_dir}/gh" <<MOCK
+#!/bin/bash
+echo "\$*" >> "${gh_log}"
+# Return a comment ID when checking for existing workflow patch comments
+if [[ "\$*" == *"ralph-comment-workflow-patch"* ]]; then
+  echo "12345"
+else
+  echo "mock-ok"
+fi
+MOCK
+  chmod +x "${mock_dir}/gh"
+  export PATH="${mock_dir}:${PATH}"
+
+  local exit_code=0
+  push_with_workflow_fallback "feature-branch" "origin/main" "42" "test/repo" 2>/dev/null || exit_code=$?
+
+  if [[ ${exit_code} -ne 0 ]]; then
+    echo "FAIL: push_with_workflow_fallback should return 0, got ${exit_code}"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify gh was called with PATCH to update existing comment
+  if ! grep -q "PATCH" "${gh_log}"; then
+    echo "FAIL: gh should have been called with PATCH to update existing comment, calls: $(cat "${gh_log}")"
+    export PATH="${original_path}"
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  export PATH="${original_path}"
+  rm -rf "${tmpdir}"
+  echo "PASS: push_with_workflow_fallback updates existing patch comment"
+}
+
 # Run all tests
 main() {
   local failed=0
@@ -310,6 +517,10 @@ main() {
   test_remove_workflow_changes || failed=$((failed + 1))
   test_script_exit_code_no_changes || failed=$((failed + 1))
   test_script_exit_code_with_changes || failed=$((failed + 1))
+  test_push_fallback_already_pushed || failed=$((failed + 1))
+  test_push_fallback_normal_push || failed=$((failed + 1))
+  test_push_fallback_handles_workflow_rejection || failed=$((failed + 1))
+  test_push_fallback_updates_existing_comment || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then

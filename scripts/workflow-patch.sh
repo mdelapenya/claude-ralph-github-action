@@ -112,6 +112,97 @@ remove_workflow_changes() {
   git commit -m "chore: remove workflow changes that cannot be pushed (patch posted to issue)" > /dev/null 2>&1
 }
 
+# Attempt to push the branch. If push fails due to workflow changes,
+# generate a patch, post it to the issue, remove workflow changes, and retry.
+#
+# Args:
+#   $1 = branch name (e.g., "ralph/issue-42")
+#   $2 = base branch (e.g., "origin/main")
+#   $3 = issue number
+#   $4 = repo (e.g., "owner/repo")
+#
+# Exit codes:
+#   0 = push succeeded (possibly after workflow patch fallback)
+#   1 = push failed for reasons other than workflow changes
+#   2 = no unpushed changes (branch already up to date)
+push_with_workflow_fallback() {
+  local branch="$1"
+  local base="$2"
+  local issue_number="$3"
+  local repo="$4"
+
+  # Check if there are unpushed commits
+  git fetch origin > /dev/null 2>&1 || true
+  local local_head remote_head
+  local_head="$(git rev-parse HEAD)"
+  remote_head="$(git rev-parse "origin/${branch}" 2>/dev/null || echo "")"
+
+  if [[ "${local_head}" == "${remote_head}" ]]; then
+    echo "Branch ${branch} is already up to date with remote." >&2
+    return 2
+  fi
+
+  # Attempt to push
+  echo "Pushing branch ${branch}..." >&2
+  local push_exit=0
+  git push origin "${branch}" 2>&1 || push_exit=$?
+
+  if [[ ${push_exit} -eq 0 ]]; then
+    echo "Push succeeded." >&2
+    return 0
+  fi
+
+  echo "Push failed (exit code ${push_exit}). Checking for workflow changes..." >&2
+
+  # Check if there are workflow changes
+  if ! has_workflow_changes "${base}"; then
+    echo "Push failed but no workflow changes detected." >&2
+    return 1
+  fi
+
+  echo "Workflow changes detected. Generating patch and posting to issue..." >&2
+
+  # Generate the patch comment
+  local patch_comment
+  patch_comment="$(format_patch_comment "${base}")" || true
+
+  if [[ -z "${patch_comment}" ]]; then
+    echo "WARNING: Failed to generate patch comment." >&2
+    return 1
+  fi
+
+  # Post or update the patch comment on the issue
+  if command -v gh &> /dev/null && [[ -n "${issue_number}" ]] && [[ -n "${repo}" ]]; then
+    # Check if a patch comment already exists (avoid duplicates)
+    local existing_comment_id=""
+    existing_comment_id="$(gh api "repos/${repo}/issues/${issue_number}/comments" \
+      --jq '.[] | select(.body | contains("<!-- ralph-comment-workflow-patch -->")) | .id' \
+      2>/dev/null | tail -1 || echo "")"
+
+    if [[ -n "${existing_comment_id}" ]]; then
+      echo "Updating existing workflow patch comment (ID: ${existing_comment_id})..." >&2
+      gh api "repos/${repo}/issues/comments/${existing_comment_id}" \
+        -X PATCH -f body="${patch_comment}" > /dev/null 2>&1 || true
+    else
+      echo "Posting workflow patch comment to issue #${issue_number}..." >&2
+      gh issue comment "${issue_number}" --repo "${repo}" --body "${patch_comment}" > /dev/null 2>&1 || true
+    fi
+  fi
+
+  # Remove workflow changes and retry push
+  echo "Removing workflow changes from branch..." >&2
+  remove_workflow_changes "${base}"
+
+  echo "Retrying push after removing workflow changes..." >&2
+  git push origin "${branch}" 2>&1 || {
+    echo "WARNING: Push still failed after removing workflow changes." >&2
+    return 1
+  }
+
+  echo "Push succeeded after removing workflow changes and posting patch." >&2
+  return 0
+}
+
 # Main: generate and print the formatted patch comment
 main() {
   local base="${1:-origin/main}"
