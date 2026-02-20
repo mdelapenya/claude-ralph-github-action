@@ -375,6 +375,7 @@ test_state_read_event_info_default() {
   echo "PASS: state event info returns empty by default"
 }
 
+
 # Run all tests
 main() {
   local failed=0

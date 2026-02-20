@@ -114,6 +114,7 @@ state_read_final_status() {
   cat "${RALPH_DIR}/final-status.txt" 2>/dev/null || echo ""
 }
 
+
 # Write the trigger event info (action type and optional comment ID)
 # Args: $1 = event action (e.g., "labeled", "edited", "created")
 #        $2 = comment ID (optional, only for issue_comment events)

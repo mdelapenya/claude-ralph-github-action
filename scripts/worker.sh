@@ -39,6 +39,7 @@ if [[ "${iteration}" -eq 1 ]]; then
   fi
 fi
 
+
 # Build the worker prompt - agent reads state files directly
 prompt="You are on iteration ${iteration} of a Ralph loop. Work on the task."
 prompt+=$'\n\n'"Read .ralph/task.md for the task description."
@@ -75,9 +76,8 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the worker system prompt
-claude "${cli_args[@]}" "${prompt}"
-
-worker_exit=$?
+worker_exit=0
+claude "${cli_args[@]}" "${prompt}" || worker_exit=$?
 
 if [[ ${worker_exit} -ne 0 ]]; then
   echo "ERROR: Worker Claude CLI exited with code ${worker_exit}"
