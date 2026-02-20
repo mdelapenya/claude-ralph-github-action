@@ -145,7 +145,7 @@ state_write_iteration "0"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
   echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
-  echo "default_branch=${INPUT_DEFAULT_BRANCH:-}"
+  echo "default_branch=${INPUT_DEFAULT_BRANCH:-${BASE_BRANCH}}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
   if [[ -n "${existing_pr_number}" ]]; then
