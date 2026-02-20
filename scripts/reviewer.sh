@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-10}"
+MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-30}"
 REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task}"
 REVIEWER_TONE="${INPUT_REVIEWER_TONE:-}"
 
@@ -50,9 +50,8 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the reviewer system prompt
-claude "${cli_args[@]}" "${prompt}"
-
-reviewer_exit=$?
+reviewer_exit=0
+claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
 
 if [[ ${reviewer_exit} -ne 0 ]]; then
   echo "ERROR: Reviewer Claude CLI exited with code ${reviewer_exit}"
@@ -80,5 +79,6 @@ if [[ -n "${branch}" ]]; then
   source "${SCRIPT_DIR}/workflow-patch.sh"
   push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" || true
 fi
+
 
 echo "=== Reviewer Phase Complete ==="

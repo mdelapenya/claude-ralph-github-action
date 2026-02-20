@@ -171,6 +171,7 @@ If `git push` fails with a permission error and the branch contains changes to `
 
 **IMPORTANT:** This is a fallback for when the push fails. Always attempt the push first — many setups use PAT tokens that allow workflow modifications.
 
+
 ## Rules
 
 - **Do NOT modify any source code.** You are a reviewer, not a developer.
