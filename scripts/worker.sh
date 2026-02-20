@@ -31,8 +31,16 @@ prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."
 
 echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
 
-# Build the system prompt
+# Read the base branch from pr-info.txt (fall back to "main")
+base_branch="main"
+if [[ -f "${RALPH_DIR}/pr-info.txt" ]]; then
+  base_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" | cut -d= -f2-)"
+  base_branch="${base_branch:-main}"
+fi
+
+# Build the system prompt, replacing __BASE_BRANCH__ placeholder with the actual base branch
 system_prompt="$(cat "${PROMPTS_DIR}/worker-system.md")"
+system_prompt="${system_prompt//__BASE_BRANCH__/${base_branch}}"
 
 # Append tone instruction if worker_tone is set
 if [[ -n "${WORKER_TONE}" ]]; then
