@@ -50,9 +50,8 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the reviewer system prompt
-claude "${cli_args[@]}" "${prompt}"
-
-reviewer_exit=$?
+reviewer_exit=0
+claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
 
 if [[ ${reviewer_exit} -ne 0 ]]; then
   echo "ERROR: Reviewer Claude CLI exited with code ${reviewer_exit}"
