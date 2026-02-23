@@ -147,27 +147,28 @@ After completing your review, post a **concise** comment on the issue to inform 
 
 If `git push` fails with a permission error and the branch contains changes to `.github/workflows/` files, follow these steps to ensure the workflow changes are not lost:
 
-1. **Detect workflow changes:** Run `git diff origin/main --name-only -- .github/workflows/` to check if workflow files were modified.
-2. **Generate and post the patch:** Use the helper script to generate a formatted patch comment:
+1. **Determine the base branch:** Read the `default_branch=` line from `.ralph/pr-info.txt`. If empty, auto-detect with: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+2. **Detect workflow changes:** Run `git diff origin/<default-branch> --name-only -- .github/workflows/` to check if workflow files were modified.
+3. **Generate and post the patch:** Use the helper script to generate a formatted patch comment:
    ```bash
    source scripts/workflow-patch.sh
-   patch_comment="$(format_patch_comment "origin/main")"
+   patch_comment="$(format_patch_comment "origin/<default-branch>")"
    ```
-   Or run it directly and capture the output: `patch_comment="$(scripts/workflow-patch.sh origin/main)"`
-3. **Post the patch to the issue:**
+   Or run it directly and capture the output: `patch_comment="$(scripts/workflow-patch.sh origin/<default-branch>)"`
+4. **Post the patch to the issue:**
    - Read the issue number from `.ralph/issue-number.txt`
    - Read the repo from `.ralph/pr-info.txt`
    - Post the patch as a comment:
      ```bash
      gh issue comment <issue> --repo <repo> --body "${patch_comment}"
      ```
-4. **Remove workflow changes from the branch and retry push:**
+5. **Remove workflow changes from the branch and retry push:**
    ```bash
    source scripts/workflow-patch.sh
-   remove_workflow_changes "origin/main"
+   remove_workflow_changes "origin/<default-branch>"
    git push origin <branch>
    ```
-5. **Continue with PR creation as normal.** The PR body should note that workflow changes were posted as a patch on the issue.
+6. **Continue with PR creation as normal.** The PR body should note that workflow changes were posted as a patch on the issue.
 
 **IMPORTANT:** This is a fallback for when the push fails. Always attempt the push first — many setups use PAT tokens that allow workflow modifications.
 
