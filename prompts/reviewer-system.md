@@ -153,7 +153,7 @@ If `git push` fails with a permission error and the branch contains changes to `
    source scripts/workflow-patch.sh
    patch_comment="$(format_patch_comment "origin/main")"
    ```
-   Or run it directly: `scripts/workflow-patch.sh origin/main`
+   Or run it directly and capture the output: `patch_comment="$(scripts/workflow-patch.sh origin/main)"`
 3. **Post the patch to the issue:**
    - Read the issue number from `.ralph/issue-number.txt`
    - Read the repo from `.ralph/pr-info.txt`
