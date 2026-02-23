@@ -77,7 +77,12 @@ default_branch="${default_branch:-main}"
 
 if [[ -n "${branch}" ]]; then
   source "${SCRIPT_DIR}/workflow-patch.sh"
-  push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" || true
+  push_exit=0
+  push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" || push_exit=$?
+  if [[ ${push_exit} -ne 0 ]]; then
+    echo "ERROR: Failed to push branch '${branch}' even after workflow fallback (exit code ${push_exit})."
+    exit ${push_exit}
+  fi
 fi
 
 
