@@ -15,26 +15,16 @@ state_init() {
 
 # Write the task description from the issue
 # Args: $1 = issue title, $2 = issue body, $3 = issue comments (optional)
+# Uses printf instead of heredocs to avoid injection when content contains delimiter strings
 state_write_task() {
   local title="$1"
   local body="$2"
   local comments="${3:-}"
-  cat > "${RALPH_DIR}/task.md" <<EOF
-# ${title}
-
-${body}
-EOF
+  printf '# %s\n\n%s\n' "${title}" "${body}" > "${RALPH_DIR}/task.md"
 
   # Append comments if provided
   if [[ -n "${comments}" ]]; then
-    cat >> "${RALPH_DIR}/task.md" <<EOF
-
----
-
-# Issue Comments
-
-${comments}
-EOF
+    printf '\n---\n\n# Issue Comments\n\n%s\n' "${comments}" >> "${RALPH_DIR}/task.md"
   fi
 }
 
