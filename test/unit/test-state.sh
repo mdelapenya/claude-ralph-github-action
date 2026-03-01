@@ -363,6 +363,62 @@ test_state_write_task_with_delimiter_in_comments() {
   echo "PASS: state_write_task handles delimiter strings in comments"
 }
 
+test_state_write_read_push_error() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Write push error
+  state_write_push_error "Push failed with exit code 1 for branch 'ralph/issue-42'"
+  local result
+  result="$(state_read_push_error)"
+
+  if [[ "${result}" != "Push failed with exit code 1 for branch 'ralph/issue-42'" ]]; then
+    echo "FAIL: Expected push error message, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Clear push error
+  state_clear_push_error
+  result="$(state_read_push_error)"
+
+  if [[ -n "${result}" ]]; then
+    echo "FAIL: Expected empty push error after clear, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state push error write/read/clear work correctly"
+}
+
+test_state_read_push_error_default() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Don't write anything, just read
+  local result
+  result="$(state_read_push_error)"
+
+  if [[ -n "${result}" ]]; then
+    echo "FAIL: Expected empty push error by default, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_read_push_error returns empty by default"
+}
+
 # Run all tests
 main() {
   local failed=0
@@ -378,6 +434,8 @@ main() {
   test_state_write_read_issue_number || failed=$((failed + 1))
   test_state_write_read_work_summary || failed=$((failed + 1))
   test_state_write_read_final_status || failed=$((failed + 1))
+  test_state_write_read_push_error || failed=$((failed + 1))
+  test_state_read_push_error_default || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then

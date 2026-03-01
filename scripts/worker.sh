@@ -27,6 +27,12 @@ if [[ -n "${feedback}" && "${iteration}" -gt 1 ]]; then
   prompt+=$'\n\n'"Read .ralph/review-feedback.txt for reviewer feedback from the previous iteration (HIGHEST PRIORITY)."
 fi
 
+# Include push error context if a previous push failed
+push_error="$(state_read_push_error)"
+if [[ -n "${push_error}" ]]; then
+  prompt+=$'\n\n'"IMPORTANT: The previous push to remote failed. Read .ralph/push-error.txt for details. You must investigate and resolve the push error (e.g., fix conflicting changes, resolve authentication issues, or adjust files that cannot be pushed)."
+fi
+
 prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."
 
 echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
