@@ -31,8 +31,16 @@ prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."
 
 echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
 
-# Build the system prompt
+# Read the base branch from pr-info.txt (fall back to "main")
+base_branch="main"
+if [[ -f "${RALPH_DIR}/pr-info.txt" ]]; then
+  base_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" | cut -d= -f2- || true)"
+  base_branch="${base_branch:-main}"
+fi
+
+# Build the system prompt, replacing __BASE_BRANCH__ placeholder with the actual base branch
 system_prompt="$(cat "${PROMPTS_DIR}/worker-system.md")"
+system_prompt="${system_prompt//__BASE_BRANCH__/${base_branch}}"
 
 # Append tone instruction if worker_tone is set
 if [[ -n "${WORKER_TONE}" ]]; then
@@ -54,9 +62,8 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the worker system prompt
-claude "${cli_args[@]}" "${prompt}"
-
-worker_exit=$?
+worker_exit=0
+claude "${cli_args[@]}" "${prompt}" || worker_exit=$?
 
 if [[ ${worker_exit} -ne 0 ]]; then
   echo "ERROR: Worker Claude CLI exited with code ${worker_exit}"

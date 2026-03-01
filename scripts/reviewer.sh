@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-10}"
+MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-30}"
 REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task}"
 REVIEWER_TONE="${INPUT_REVIEWER_TONE:-}"
 
@@ -27,8 +27,16 @@ prompt+=$'\n\n'"5. If REVISE, write specific feedback to .ralph/review-feedback.
 
 echo "=== Reviewer Phase (iteration ${iteration}, model: ${REVIEWER_MODEL}) ==="
 
-# Build the system prompt
+# Read the base branch from pr-info.txt (fall back to "main")
+base_branch="main"
+if [[ -f "${RALPH_DIR}/pr-info.txt" ]]; then
+  base_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" | cut -d= -f2- || true)"
+  base_branch="${base_branch:-main}"
+fi
+
+# Build the system prompt, replacing __BASE_BRANCH__ placeholder with the actual base branch
 system_prompt="$(cat "${PROMPTS_DIR}/reviewer-system.md")"
+system_prompt="${system_prompt//__BASE_BRANCH__/${base_branch}}"
 
 # Append tone instruction if reviewer_tone is set
 if [[ -n "${REVIEWER_TONE}" ]]; then
@@ -50,9 +58,8 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the reviewer system prompt
-claude "${cli_args[@]}" "${prompt}"
-
-reviewer_exit=$?
+reviewer_exit=0
+claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
 
 if [[ ${reviewer_exit} -ne 0 ]]; then
   echo "ERROR: Reviewer Claude CLI exited with code ${reviewer_exit}"
@@ -65,5 +72,26 @@ if [[ ! -f "${RALPH_DIR}/review-result.txt" ]]; then
   state_write_review_result "REVISE"
   state_write_review_feedback "Reviewer failed to produce a result. Please re-examine the code and ensure it meets the task requirements."
 fi
+
+# Post-review safety net: ensure the branch is pushed.
+# If the reviewer agent failed to push (e.g., due to workflow file permissions),
+# this fallback handles it automatically: generates a patch, posts it to the issue,
+# removes workflow changes from the branch, and retries the push.
+branch="$(grep '^branch=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
+repo="$(grep '^repo=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
+issue_number="$(state_read_issue_number)"
+default_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
+default_branch="${default_branch:-main}"
+
+if [[ -n "${branch}" ]]; then
+  source "${SCRIPT_DIR}/workflow-patch.sh"
+  push_exit=0
+  push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" || push_exit=$?
+  if [[ ${push_exit} -ne 0 ]]; then
+    echo "ERROR: Failed to push branch '${branch}' even after workflow fallback (exit code ${push_exit})."
+    exit ${push_exit}
+  fi
+fi
+
 
 echo "=== Reviewer Phase Complete ==="
