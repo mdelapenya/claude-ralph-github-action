@@ -61,7 +61,7 @@ Before pushing, ensure the branch is clean:
      - **You MUST attempt to push, even if workflow files were modified**
      - Do NOT assume workflow changes will fail due to permissions
      - PAT tokens (like `GH_PAT_TOKEN`) have user-level repository permissions and are not subject to the workflow file modification restriction that applies to the default `GITHUB_TOKEN`
-     - **Only if the push actually fails with a permission error should you question workflow changes**
+     - **Only if the push actually fails with a permission error should you handle workflow changes** (see "Handling Workflow File Push Failures" section below)
      - If push succeeds, continue with PR creation below
    - Generate a PR title using conventional commits format: `<type>: <description>`
      - Infer the type from changes: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`
@@ -142,6 +142,36 @@ After completing your review, post a **concise** comment on the issue to inform 
    - If an end comment exists, update it with `gh api "repos/<repo>/issues/comments/<id>" -X PATCH -f body="<comment>"`
    - Otherwise create new comment: `gh issue comment <issue> --repo <repo> --body "<comment>"`
    - Always include the marker `<!-- ralph-comment-end -->` in your comments
+
+## Handling Workflow File Push Failures
+
+If `git push` fails with a permission error and the branch contains changes to `.github/workflows/` files, follow these steps to ensure the workflow changes are not lost:
+
+1. **Determine the base branch:** Read the `default_branch=` line from `.ralph/pr-info.txt`. If empty, auto-detect with: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+2. **Detect workflow changes:** Run `git diff origin/<default-branch> --name-only -- .github/workflows/` to check if workflow files were modified.
+3. **Generate and post the patch:** Use the helper script to generate a formatted patch comment:
+   ```bash
+   source scripts/workflow-patch.sh
+   patch_comment="$(format_patch_comment "origin/<default-branch>")"
+   ```
+   Or run it directly and capture the output: `patch_comment="$(scripts/workflow-patch.sh origin/<default-branch>)"`
+4. **Post the patch to the issue:**
+   - Read the issue number from `.ralph/issue-number.txt`
+   - Read the repo from `.ralph/pr-info.txt`
+   - Post the patch as a comment:
+     ```bash
+     gh issue comment <issue> --repo <repo> --body "${patch_comment}"
+     ```
+5. **Remove workflow changes from the branch and retry push:**
+   ```bash
+   source scripts/workflow-patch.sh
+   remove_workflow_changes "origin/<default-branch>"
+   git push origin <branch>
+   ```
+6. **Continue with PR creation as normal.** The PR body should note that workflow changes were posted as a patch on the issue.
+
+**IMPORTANT:** This is a fallback for when the push fails. Always attempt the push first — many setups use PAT tokens that allow workflow modifications.
+
 
 ## Rules
 
