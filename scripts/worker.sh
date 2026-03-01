@@ -34,7 +34,7 @@ echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
 # Read the base branch from pr-info.txt (fall back to "main")
 base_branch="main"
 if [[ -f "${RALPH_DIR}/pr-info.txt" ]]; then
-  base_branch="$(awk -F= '/^default_branch=/{sub(/^[^=]*=/,""); print; exit}' "${RALPH_DIR}/pr-info.txt")"
+  base_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" | cut -d= -f2- || true)"
   base_branch="${base_branch:-main}"
 fi
 
