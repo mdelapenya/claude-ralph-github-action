@@ -1,6 +1,0 @@
-repo=mdelapenya/claude-ralph-github-action
-branch=ralph/issue-49
-issue_title=Look for implementation issues
-merge_strategy=pr
-default_branch=main
-pr_number=
