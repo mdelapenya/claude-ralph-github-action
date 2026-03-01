@@ -20,7 +20,7 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 
 ## React to the Triggering Event
 
-On **iteration 1 only**, react with a 👍 (+1) to the issue or comment that triggered this run. This lets the user know you've started working.
+On **iteration 1 only**, react with a 👍 (+1) to the issue and comment that triggered this run. This lets the user know you've started working.
 
 1. Read the issue number from `.ralph/issue-number.txt`
 2. Read `.ralph/event-info.txt` to check for a `comment_id=` value
