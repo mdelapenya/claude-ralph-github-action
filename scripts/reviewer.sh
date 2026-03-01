@@ -27,8 +27,16 @@ prompt+=$'\n\n'"5. If REVISE, write specific feedback to .ralph/review-feedback.
 
 echo "=== Reviewer Phase (iteration ${iteration}, model: ${REVIEWER_MODEL}) ==="
 
-# Build the system prompt
+# Read the base branch from pr-info.txt (fall back to "main")
+base_branch="main"
+if [[ -f "${RALPH_DIR}/pr-info.txt" ]]; then
+  base_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" | cut -d= -f2- || true)"
+  base_branch="${base_branch:-main}"
+fi
+
+# Build the system prompt, replacing __BASE_BRANCH__ placeholder with the actual base branch
 system_prompt="$(cat "${PROMPTS_DIR}/reviewer-system.md")"
+system_prompt="${system_prompt//__BASE_BRANCH__/${base_branch}}"
 
 # Append tone instruction if reviewer_tone is set
 if [[ -n "${REVIEWER_TONE}" ]]; then

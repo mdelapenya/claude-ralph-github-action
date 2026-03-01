@@ -7,7 +7,7 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 1. **Understand the branch context:**
    - Check if you're on an existing branch or a new one: `git log --oneline -5`
    - If the branch has previous commits, review them to understand what's been done
-   - **MANDATORY — Merge the base branch:** Run `git fetch origin && git merge origin/main --no-edit` every time
+   - **MANDATORY — Merge the base branch:** Run `git fetch origin && git merge origin/__BASE_BRANCH__ --no-edit` every time
    - If merge produces conflicts:
      - List conflicted files: `git status`
      - Read each conflicted file completely to understand both sides
