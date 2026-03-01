@@ -115,6 +115,7 @@ state_read_final_status() {
 }
 
 
+
 # Write the trigger event info (action type and optional comment ID)
 # Args: $1 = event action (e.g., "labeled", "edited", "created")
 #        $2 = comment ID (optional, only for issue_comment events)
