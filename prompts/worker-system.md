@@ -18,6 +18,19 @@ You are the **worker** in a Ralph loop — an iterative work/review/ship cycle. 
 3. Read `.ralph/iteration.txt` to know which iteration this is.
 4. If iteration > 1, read `.ralph/review-feedback.txt` for reviewer feedback (highest priority).
 
+## React to the Triggering Event
+
+On **iteration 1 only**, react with a 👍 (+1) to the issue or comment that triggered this run. This lets the user know you've started working.
+
+1. Read the issue number from `.ralph/issue-number.txt`
+2. Read `.ralph/event-info.txt` to check for a `comment_id=` value
+3. Read the repo from the `repo=` line in `.ralph/pr-info.txt`
+4. Post the reaction:
+   - If `comment_id` is non-empty (comment event): `gh api "repos/<repo>/issues/comments/<comment_id>/reactions" -f content="+1" --silent 2>/dev/null || true`
+   - Otherwise (issue event): `gh api "repos/<repo>/issues/<issue_number>/reactions" -f content="+1" --silent 2>/dev/null || true`
+
+Skip this step on iteration 2+.
+
 ## Priority
 
 If reviewer feedback exists, **addressing that feedback is your highest priority**. The reviewer has examined your previous work and identified specific issues. Fix those issues first, then continue with any remaining task requirements.

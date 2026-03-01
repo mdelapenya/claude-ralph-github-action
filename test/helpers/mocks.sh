@@ -87,6 +87,28 @@ elif [[ "${prompt}" == *"Work on the task"* ]] || [[ "${prompt}" == *"You are on
     iteration="$(cat .ralph/iteration.txt)"
   fi
 
+  # Simulate agent reacting with +1 on first iteration (as instructed by system prompt)
+  if [[ "${iteration}" -eq 1 ]]; then
+    _react_issue_number=""
+    _react_comment_id=""
+    _react_repo="${GITHUB_REPOSITORY:-}"
+
+    if [[ -f .ralph/issue-number.txt ]]; then
+      _react_issue_number="$(cat .ralph/issue-number.txt)"
+    fi
+    if [[ -f .ralph/event-info.txt ]]; then
+      _react_comment_id="$(grep '^comment_id=' .ralph/event-info.txt | cut -d= -f2- || true)"
+    fi
+
+    if [[ -n "${_react_repo}" && -n "${_react_issue_number}" ]]; then
+      if [[ -n "${_react_comment_id}" ]]; then
+        gh api "repos/${_react_repo}/issues/comments/${_react_comment_id}/reactions" -f content="+1" --silent 2>/dev/null || true
+      else
+        gh api "repos/${_react_repo}/issues/${_react_issue_number}/reactions" -f content="+1" --silent 2>/dev/null || true
+      fi
+    fi
+  fi
+
   # Create a file and commit it (simulating worker making changes)
   echo "change from iteration ${iteration}" > "worker-output-${iteration}.txt"
   git add "worker-output-${iteration}.txt"
