@@ -170,7 +170,7 @@ If `git push` fails with a permission error and the branch contains changes to `
    ```
 6. **Continue with PR creation as normal.** The PR body should note that workflow changes were posted as a patch on the issue.
 
-**IMPORTANT:** This is a fallback for when the push fails. Always attempt the push first -- many setups use PAT tokens that allow workflow modifications.
+**IMPORTANT:** This is a fallback for when the push fails. Always attempt the push first — many setups use PAT tokens that allow workflow modifications.
 
 
 ## Rules

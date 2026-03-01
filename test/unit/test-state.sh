@@ -217,6 +217,86 @@ test_state_write_task_with_comments() {
   echo "PASS: state_write_task with comments works correctly"
 }
 
+test_state_write_task_with_delimiter_in_content() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Body contains "EOF" on its own line, which would break a heredoc-based implementation
+  local body
+  body=$'Here is a code snippet:\n```\nEOF\n```\nEnd of snippet.'
+  state_write_task "Delimiter Test" "${body}"
+
+  if [[ ! -f ".ralph/task.md" ]]; then
+    echo "FAIL: task.md should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "# Delimiter Test" .ralph/task.md; then
+    echo "FAIL: task.md should contain the title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "^EOF$" .ralph/task.md; then
+    echo "FAIL: task.md should contain literal EOF line from body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "End of snippet" .ralph/task.md; then
+    echo "FAIL: task.md should contain content after the EOF line"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task handles delimiter strings in content"
+}
+
+test_state_write_task_with_delimiter_in_comments() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  local comments
+  comments=$'## Comment by @user1\n\nEOF\nMore text after EOF'
+  state_write_task "Comment Delimiter Test" "Normal body" "${comments}"
+
+  if ! grep -q "# Comment Delimiter Test" .ralph/task.md; then
+    echo "FAIL: task.md should contain the title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Issue Comments" .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comments section"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "More text after EOF" .ralph/task.md; then
+    echo "FAIL: task.md should contain content after EOF in comments"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task handles delimiter strings in comments"
+}
+
 test_state_write_read_issue_number() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -375,7 +455,6 @@ test_state_read_event_info_default() {
   echo "PASS: state event info returns empty by default"
 }
 
-
 # Run all tests
 main() {
   local failed=0
@@ -386,6 +465,8 @@ main() {
   test_state_review_result_normalization || failed=$((failed + 1))
   test_state_write_read_task || failed=$((failed + 1))
   test_state_write_task_with_comments || failed=$((failed + 1))
+  test_state_write_task_with_delimiter_in_content || failed=$((failed + 1))
+  test_state_write_task_with_delimiter_in_comments || failed=$((failed + 1))
   test_state_write_read_issue_number || failed=$((failed + 1))
   test_state_write_read_work_summary || failed=$((failed + 1))
   test_state_write_read_final_status || failed=$((failed + 1))
