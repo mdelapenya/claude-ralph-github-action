@@ -217,72 +217,6 @@ test_state_write_task_with_comments() {
   echo "PASS: state_write_task with comments works correctly"
 }
 
-test_state_write_read_issue_number() {
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  cd "${tmpdir}"
-  state_init
-
-  state_write_issue_number "42"
-  local result
-  result="$(state_read_issue_number)"
-
-  if [[ "${result}" != "42" ]]; then
-    echo "FAIL: Expected issue_number=42, got=${result}"
-    cd - > /dev/null
-    rm -rf "${tmpdir}"
-    return 1
-  fi
-
-  cd - > /dev/null
-  rm -rf "${tmpdir}"
-  echo "PASS: state_write_issue_number and state_read_issue_number work correctly"
-}
-
-test_state_write_read_work_summary() {
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  cd "${tmpdir}"
-  state_init
-
-  state_write_work_summary "Summary of work"
-  local result
-  result="$(state_read_work_summary)"
-
-  if [[ "${result}" != "Summary of work" ]]; then
-    echo "FAIL: Expected work summary, got=${result}"
-    cd - > /dev/null
-    rm -rf "${tmpdir}"
-    return 1
-  fi
-
-  cd - > /dev/null
-  rm -rf "${tmpdir}"
-  echo "PASS: state_write_work_summary and state_read_work_summary work correctly"
-}
-
-test_state_write_read_final_status() {
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  cd "${tmpdir}"
-  state_init
-
-  state_write_final_status "SHIPPED"
-  local result
-  result="$(state_read_final_status)"
-
-  if [[ "${result}" != "SHIPPED" ]]; then
-    echo "FAIL: Expected final_status=SHIPPED, got=${result}"
-    cd - > /dev/null
-    rm -rf "${tmpdir}"
-    return 1
-  fi
-
-  cd - > /dev/null
-  rm -rf "${tmpdir}"
-  echo "PASS: state_write_final_status and state_read_final_status work correctly"
-}
-
 test_state_write_task_with_delimiter_in_content() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -363,6 +297,164 @@ test_state_write_task_with_delimiter_in_comments() {
   echo "PASS: state_write_task handles delimiter strings in comments"
 }
 
+test_state_write_read_issue_number() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_issue_number "42"
+  local result
+  result="$(state_read_issue_number)"
+
+  if [[ "${result}" != "42" ]]; then
+    echo "FAIL: Expected issue_number=42, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_issue_number and state_read_issue_number work correctly"
+}
+
+test_state_write_read_work_summary() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_work_summary "Summary of work"
+  local result
+  result="$(state_read_work_summary)"
+
+  if [[ "${result}" != "Summary of work" ]]; then
+    echo "FAIL: Expected work summary, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_work_summary and state_read_work_summary work correctly"
+}
+
+test_state_write_read_final_status() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_final_status "SHIPPED"
+  local result
+  result="$(state_read_final_status)"
+
+  if [[ "${result}" != "SHIPPED" ]]; then
+    echo "FAIL: Expected final_status=SHIPPED, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_final_status and state_read_final_status work correctly"
+}
+
+test_state_write_read_event_info_labeled() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_event_info "labeled" ""
+
+  local action
+  action="$(state_read_event_action)"
+  if [[ "${action}" != "labeled" ]]; then
+    echo "FAIL: Expected event action=labeled, got=${action}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  local comment_id
+  comment_id="$(state_read_event_comment_id)"
+  if [[ -n "${comment_id}" ]]; then
+    echo "FAIL: Expected empty comment_id for labeled event, got=${comment_id}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state event info works for labeled events"
+}
+
+test_state_write_read_event_info_comment() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_event_info "created" "12345"
+
+  local action
+  action="$(state_read_event_action)"
+  if [[ "${action}" != "created" ]]; then
+    echo "FAIL: Expected event action=created, got=${action}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  local comment_id
+  comment_id="$(state_read_event_comment_id)"
+  if [[ "${comment_id}" != "12345" ]]; then
+    echo "FAIL: Expected comment_id=12345, got=${comment_id}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state event info works for comment events"
+}
+
+test_state_read_event_info_default() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Don't write anything, just read
+  local action
+  action="$(state_read_event_action)"
+  if [[ -n "${action}" ]]; then
+    echo "FAIL: Expected empty event action by default, got=${action}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  local comment_id
+  comment_id="$(state_read_event_comment_id)"
+  if [[ -n "${comment_id}" ]]; then
+    echo "FAIL: Expected empty comment_id by default, got=${comment_id}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state event info returns empty by default"
+}
+
 # Run all tests
 main() {
   local failed=0
@@ -378,6 +470,9 @@ main() {
   test_state_write_read_issue_number || failed=$((failed + 1))
   test_state_write_read_work_summary || failed=$((failed + 1))
   test_state_write_read_final_status || failed=$((failed + 1))
+  test_state_write_read_event_info_labeled || failed=$((failed + 1))
+  test_state_write_read_event_info_comment || failed=$((failed + 1))
+  test_state_read_event_info_default || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then

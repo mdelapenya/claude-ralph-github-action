@@ -75,6 +75,8 @@ ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
 ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"
 ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
 IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
+EVENT_ACTION="$(jq -r '.action // ""' "${EVENT_PATH}")"
+EVENT_COMMENT_ID="$(jq -r '.comment.id // ""' "${EVENT_PATH}")"
 
 # --- Fetch all issue comments to compound the context ---
 # Comments provide additional context for agents. New comments on a labeled issue
@@ -137,6 +139,7 @@ fi
 state_init
 state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}" "${ISSUE_COMMENTS}"
 state_write_issue_number "${ISSUE_NUMBER}"
+state_write_event_info "${EVENT_ACTION}" "${EVENT_COMMENT_ID}"
 state_write_iteration "0"
 
 # --- Write PR info for the reviewer agent (validation delegated to reviewer) ---

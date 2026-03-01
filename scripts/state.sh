@@ -103,3 +103,29 @@ state_write_final_status() {
 state_read_final_status() {
   cat "${RALPH_DIR}/final-status.txt" 2>/dev/null || echo ""
 }
+
+# Write the trigger event info (action type and optional comment ID)
+# Args: $1 = event action (e.g., "labeled", "edited", "created")
+#        $2 = comment ID (optional, only for issue_comment events)
+state_write_event_info() {
+  local action="$1"
+  local comment_id="${2:-}"
+  {
+    echo "action=${action}"
+    echo "comment_id=${comment_id}"
+  } > "${RALPH_DIR}/event-info.txt"
+}
+
+# Read the trigger event action
+state_read_event_action() {
+  local line
+  line="$(grep '^action=' "${RALPH_DIR}/event-info.txt" 2>/dev/null || echo "")"
+  echo "${line#action=}"
+}
+
+# Read the trigger event comment ID (empty if not a comment event)
+state_read_event_comment_id() {
+  local line
+  line="$(grep '^comment_id=' "${RALPH_DIR}/event-info.txt" 2>/dev/null || echo "")"
+  echo "${line#comment_id=}"
+}
