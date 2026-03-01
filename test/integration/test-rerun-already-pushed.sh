@@ -53,7 +53,7 @@ EOF
   echo "previous work" > previous.txt
   git add previous.txt
   git commit -m "feat: previous work" > /dev/null 2>&1
-  git push origin ralph/issue-42 > /dev/null 2>&1
+  git push -u origin ralph/issue-42 > /dev/null 2>&1
 
   # Run the real ralph loop
   export INPUT_MAX_ITERATIONS=1
