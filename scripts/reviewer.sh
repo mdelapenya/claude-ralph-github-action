@@ -86,15 +86,19 @@ default_branch="${default_branch:-main}"
 if [[ -n "${branch}" ]]; then
   source "${SCRIPT_DIR}/workflow-patch.sh"
   push_exit=0
-  push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" || push_exit=$?
+  push_output=""
+  push_output="$(push_with_workflow_fallback "${branch}" "origin/${default_branch}" "${issue_number}" "${repo}" 2>&1)" || push_exit=$?
   if [[ ${push_exit} -ne 0 && ${push_exit} -ne 2 ]]; then
-    echo "ERROR: Failed to push branch '${branch}' even after workflow fallback (exit code ${push_exit})."
-    exit ${push_exit}
-  fi
-  if [[ ${push_exit} -eq 2 ]]; then
+    echo "WARNING: Failed to push branch '${branch}' (exit code ${push_exit}). Recording error for next iteration."
+    echo "${push_output}"
+    state_write_push_error "Push failed with exit code ${push_exit} for branch '${branch}'. Output: ${push_output}"
+  elif [[ ${push_exit} -eq 2 ]]; then
     echo "Branch '${branch}' is already up to date with remote, nothing to push."
+    state_clear_push_error
+  else
+    echo "${push_output}"
+    state_clear_push_error
   fi
 fi
-
 
 echo "=== Reviewer Phase Complete ==="
