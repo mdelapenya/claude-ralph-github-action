@@ -114,6 +114,17 @@ You can post concise comments to the issue to communicate progress or ask clarif
      ```
    - This preserves all iterations' work for the final PR description
 
+## Handling Push Errors
+
+If `.ralph/push-error.txt` exists, the previous attempt to push the branch to the remote failed. This is a **high priority** issue that must be resolved:
+
+1. Read `.ralph/push-error.txt` to understand the error.
+2. Common push errors and how to resolve them:
+   - **Permission errors with workflow files**: If the push failed because `.github/workflows/` files were modified and the token lacks permissions, remove or revert those workflow file changes.
+   - **Merge conflicts with remote**: Run `git fetch origin && git pull --rebase origin <branch>` to resolve.
+   - **Other errors**: Investigate the error message and take appropriate action.
+3. After resolving the issue, commit your fix. The push will be retried automatically after the review phase.
+
 ## Rules
 
 - **Do NOT create, update, or manage pull requests.** Do NOT run `gh pr` commands. PR titles and management are handled exclusively by the reviewer agent after your work is evaluated.

@@ -103,3 +103,19 @@ state_write_final_status() {
 state_read_final_status() {
   cat "${RALPH_DIR}/final-status.txt" 2>/dev/null || echo ""
 }
+
+# Write a push error message
+# Args: $1 = error text
+state_write_push_error() {
+  echo "$1" > "${RALPH_DIR}/push-error.txt"
+}
+
+# Read the push error message (empty if no error)
+state_read_push_error() {
+  cat "${RALPH_DIR}/push-error.txt" 2>/dev/null || echo ""
+}
+
+# Clear the push error file
+state_clear_push_error() {
+  rm -f "${RALPH_DIR}/push-error.txt"
+}
