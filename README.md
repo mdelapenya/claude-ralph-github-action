@@ -20,9 +20,6 @@ When you label an issue, Ralph:
 ```yaml
 name: Ralph Loop
 
-env:
-  RALPH_REVIEW_COMMAND: '/ralph-review'
-
 on:
   issues:
     types: [labeled, edited]
@@ -60,7 +57,7 @@ jobs:
       (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
       (github.event_name == 'issues' && github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
       (github.event_name == 'issue_comment' && github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request) ||
-      (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == env.RALPH_REVIEW_COMMAND || startsWith(github.event.comment.body, format('{0} ', env.RALPH_REVIEW_COMMAND))) && github.event.comment.user.type != 'Bot')
+      (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -72,7 +69,6 @@ jobs:
       - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          ralph_review_command: ${{ env.RALPH_REVIEW_COMMAND }}
 ```
 
 3. Create a `ralph` label in your repository
@@ -238,20 +234,19 @@ Once Ralph opens a pull request, you can close the feedback loop without leaving
 /ralph-review focus on error handling and add unit tests for the new functions
 ```
 
-**Slash command constant:** Define the command string once at the workflow level so the job condition and the action input stay in sync:
+**Customizing the slash command:** If you want to use a different command (e.g., `/review`), change the literal string in both the job `if` condition and the `ralph_review_command` action input. The `env` context is not available in job-level `if` conditions (a GitHub Actions limitation), so the command string must be hardcoded there:
 
 ```yaml
-env:
-  RALPH_REVIEW_COMMAND: '/ralph-review'
+# Job-level if: hardcode the literal string
+if: >-
+  ...
+  (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot')
 
-# In the job condition:
-(github.event_name == 'issue_comment' && github.event.issue.pull_request && \
-  (github.event.comment.body == env.RALPH_REVIEW_COMMAND || \
-   startsWith(github.event.comment.body, format('{0} ', env.RALPH_REVIEW_COMMAND))) && \
-  github.event.comment.user.type != 'Bot')
-
-# In the action step:
-ralph_review_command: ${{ env.RALPH_REVIEW_COMMAND }}
+# Action step: pass as input so entrypoint.sh knows the command
+      - uses: mdelapenya/claude-ralph-github-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          ralph_review_command: '/ralph-review'
 ```
 
 **Note:** Only non-bot users can trigger `/ralph-review`. Ralph's own comments are never used as triggers.
