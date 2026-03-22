@@ -93,7 +93,7 @@ Before pushing, ensure the branch is clean:
 The action supports two merge strategies. Read the `merge_strategy=` line in `.ralph/pr-info.txt`:
 
 - **`pr` (default)**: Create or update a pull request. The PR will remain open for human review.
-- **`squash-merge`**: Squash all commits into a single commit using the PR title and push directly to the default branch. The issue will be closed automatically.
+- **`squash-merge`**: Squash all commits into a single commit using the PR title and push directly to the default branch. The issue will be closed automatically. Note: this bypasses branch protection and PR review — only use when you have high confidence the implementation is correct and complete.
 
 **IMPORTANT: You must validate the merge_strategy value:**
 - If it's not `pr` or `squash-merge`, treat it as `pr` (the default).

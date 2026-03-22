@@ -259,6 +259,12 @@ if [[ "${merge_strategy}" != "pr" && "${merge_strategy}" != "squash-merge" ]]; t
   echo "⚠️  Warning: invalid merge_strategy '${merge_strategy}', defaulting to 'pr'"
   merge_strategy="pr"
 fi
+if [[ "${merge_strategy}" == "squash-merge" ]]; then
+  echo "⚠️  WARNING: merge_strategy=squash-merge is configured."
+  echo "   The reviewer agent will push directly to the default branch on SHIP,"
+  echo "   bypassing branch protection rules and PR review requirements."
+  echo "   Ensure this is intentional for this repository."
+fi
 
 # --- Write PR info for the reviewer agent ---
 {
