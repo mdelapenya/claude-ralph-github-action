@@ -1,9 +1,11 @@
-# Docker Hardened Image (DHI) — built and pushed by CI; end users never pull this directly.
+# Docker Hardened Image (DHI) base — built and pushed by CI; end users never pull this directly.
 # Provides non-root runtime, minimal attack surface, and signed provenance.
-# Requires DOCKER_HUB_USER + DOCKER_HUB_TOKEN in CI to pull this base.
-# Pinned by digest 2026-03-22 — update deliberately after testing.
-# To find latest digest: docker login && docker pull hardened-images/node:22 && docker inspect hardened-images/node:22 --format '{{index .RepoDigests 0}}'
-FROM node:22-slim@sha256:4f77a690f2f8946ab16fe1e791a3ac0667ae1c3575c3e4d0d4589e9ed5bfaf3d
+# Requires Docker Hub credentials (DOCKER_HUB_USER + DOCKER_HUB_TOKEN) in CI to pull.
+# Pin by digest after first pull:
+#   docker login && docker pull dhi.io/node:22 \
+#     && docker inspect dhi.io/node:22 --format '{{index .RepoDigests 0}}'
+# Then replace this line with: FROM dhi.io/node:22@sha256:<digest>
+FROM dhi.io/node:22
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
