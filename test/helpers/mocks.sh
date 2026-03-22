@@ -155,6 +155,10 @@ case "${1:-}" in
       edit)
         echo "PR updated"
         ;;
+      view)
+        # Return the ralph branch name for /ralph-review slash command flow
+        echo "ralph/issue-42"
+        ;;
       *)
         echo "mock gh pr: unknown subcommand ${2:-}"
         ;;

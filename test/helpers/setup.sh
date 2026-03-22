@@ -138,77 +138,35 @@ ${comment_block}
 EOF
 }
 
-# Write a GitHub PR review comment event JSON file
+# Write a GitHub issue_comment event JSON for a /ralph-review slash command on a PR.
+# This is the event produced when a user types "/ralph-review" as a PR comment.
+# PR comments go through the issue_comment event with .issue.pull_request set.
 # Args: $1 = tmpdir to write into
 #       $2 = pr number (default: 999)
-#       $3 = branch name (default: ralph/issue-42)
-#       $4 = issue number embedded in branch (default: 42)
-#       $5 = event action (default: "created")
-create_pr_review_comment_event_json() {
+#       $3 = issue number (default: 42)
+#       $4 = command body (default: "/ralph-review")
+create_ralph_review_slash_command_event_json() {
   local tmpdir="$1"
   local pr_number="${2:-999}"
-  local branch="${3:-ralph/issue-42}"
-  local event_action="${4:-created}"
+  local issue_number="${3:-42}"
+  local command_body="${4:-/ralph-review}"
 
-  cat > "${tmpdir}/pr-review-comment-event.json" <<EOF
+  cat > "${tmpdir}/ralph-review-event.json" <<EOF
 {
-  "action": "${event_action}",
+  "action": "created",
   "comment": {
     "id": 1001,
     "user": {
       "login": "reviewer",
       "type": "User"
     },
-    "body": "This function should be refactored for clarity.",
-    "path": "src/main.sh",
-    "line": 42,
-    "original_line": 42
+    "body": "${command_body}"
   },
-  "pull_request": {
+  "issue": {
     "number": ${pr_number},
-    "title": "feat: implement feature from issue",
-    "body": "Closes #${branch##*-}",
-    "head": {
-      "ref": "${branch}"
-    }
-  },
-  "repository": {
-    "full_name": "test-owner/test-repo",
-    "default_branch": "main"
-  }
-}
-EOF
-}
-
-# Write a GitHub PR review (overall review) event JSON file
-# Args: $1 = tmpdir to write into
-#       $2 = pr number (default: 999)
-#       $3 = branch name (default: ralph/issue-42)
-#       $4 = review state (default: "changes_requested")
-create_pr_review_event_json() {
-  local tmpdir="$1"
-  local pr_number="${2:-999}"
-  local branch="${3:-ralph/issue-42}"
-  local review_state="${4:-changes_requested}"
-
-  cat > "${tmpdir}/pr-review-event.json" <<EOF
-{
-  "action": "submitted",
-  "review": {
-    "id": 2001,
-    "user": {
-      "login": "reviewer",
-      "type": "User"
-    },
-    "body": "Please address the naming issues and add error handling.",
-    "state": "${review_state}"
-  },
-  "pull_request": {
-    "number": ${pr_number},
-    "title": "feat: implement feature from issue",
-    "body": "Closes #${branch##*-}",
-    "head": {
-      "ref": "${branch}"
+    "pull_request": {
+      "url": "https://api.github.com/repos/test-owner/test-repo/pulls/${pr_number}",
+      "html_url": "https://github.com/test-owner/test-repo/pull/${pr_number}"
     }
   },
   "repository": {
@@ -223,5 +181,4 @@ export -f create_test_workspace
 export -f cleanup_test_workspace
 export -f setup_test_env
 export -f create_event_json
-export -f create_pr_review_comment_event_json
-export -f create_pr_review_event_json
+export -f create_ralph_review_slash_command_event_json

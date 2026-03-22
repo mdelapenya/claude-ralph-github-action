@@ -66,6 +66,10 @@ inputs:
     description: 'Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality.'
     required: false
     default: ''
+  ralph_review_command:
+    description: 'Slash command to trigger a re-review on a Ralph PR (e.g., "/ralph-review focus on tests")'
+    required: false
+    default: '/ralph-review'
 
 outputs:
   pr_url:
@@ -94,3 +98,4 @@ runs:
     INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
     INPUT_WORKER_TONE: ${{ inputs.worker_tone }}
     INPUT_REVIEWER_TONE: ${{ inputs.reviewer_tone }}
+    INPUT_RALPH_REVIEW_COMMAND: ${{ inputs.ralph_review_command }}

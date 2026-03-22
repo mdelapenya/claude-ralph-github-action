@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# test-pr-review-comment.sh - Integration test for PR review comment trigger
+# test-pr-review-comment.sh - Integration test for /ralph-review slash command
 #
 # Verifies that the Ralph loop processes a task that includes PR review feedback
 # in task.md (as would be written by entrypoint.sh when triggered by a
-# pull_request_review_comment or pull_request_review event).
+# /ralph-review comment on a Ralph-created PR).
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ source "${HELPERS_DIR}/setup.sh"
 # shellcheck source=test/helpers/mocks.sh
 source "${HELPERS_DIR}/mocks.sh"
 
-test_pr_review_comment_trigger() {
+test_ralph_review_slash_command() {
   local tmpdir
   tmpdir="$(create_test_workspace)"
   local workspace="${tmpdir}/workspace"
@@ -34,11 +34,11 @@ test_pr_review_comment_trigger() {
   state_init
 
   # Write task.md with PR review feedback — this is what entrypoint.sh produces
-  # when triggered by a pull_request_review_comment event
+  # when triggered by a /ralph-review slash command on a Ralph PR
   local pr_review_context
   pr_review_context="$(cat <<'EOF'
 # PR Review Feedback (PR #999)
-This run was triggered by a PR review comment on PR #999 (branch: ralph/issue-42). Address all reviewer feedback below.
+This run was triggered by a /ralph-review slash command on PR #999 (branch: ralph/issue-42). Address all reviewer feedback below.
 
 ## Inline Code Comments
 
@@ -115,8 +115,8 @@ EOF
     return 1
   fi
 
-  if ! grep -q "This function should be refactored" "${RALPH_DIR}/task.md"; then
-    echo "FAIL: task.md should contain the inline review comment"
+  if ! grep -q "ralph-review" "${RALPH_DIR}/task.md"; then
+    echo "FAIL: task.md should mention the /ralph-review slash command"
     teardown_mock_binaries
     cleanup_test_workspace "${tmpdir}"
     return 1
@@ -132,11 +132,11 @@ EOF
   # Clean up
   teardown_mock_binaries
   cleanup_test_workspace "${tmpdir}"
-  echo "PASS: PR review comment trigger runs loop with review context in task.md"
+  echo "PASS: /ralph-review slash command runs loop with review context in task.md"
 }
 
 main() {
-  test_pr_review_comment_trigger
+  test_ralph_review_slash_command
 }
 
 main "$@"

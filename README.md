@@ -20,6 +20,9 @@ When you label an issue, Ralph:
 ```yaml
 name: Ralph Loop
 
+env:
+  RALPH_REVIEW_COMMAND: '/ralph-review'
+
 on:
   issues:
     types: [labeled, edited]
@@ -42,19 +45,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" \
+          existing="$(gh pr view "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}" \
-            --body "🤖 **Ralph** can only work on issues, not pull requests. Please create an issue and label it with \`ralph\` instead."
+            --json comments --jq '.comments[].body' \
+            | grep -c '🤖 \*\*Ralph\*\*' || true)"
+          if [[ "${existing}" -eq 0 ]]; then
+            gh pr comment "${{ github.event.pull_request.number }}" \
+              --repo "${{ github.repository }}" \
+              --body "🤖 **Ralph** can only work on issues, not pull requests. Please create an issue and label it with \`ralph\` instead."
+          fi
 
   ralph:
     if: >-
-      (github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
-      (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
-      (github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request)
+      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
+      (github.event_name == 'issues' && github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
+      (github.event_name == 'issue_comment' && github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request) ||
+      (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == env.RALPH_REVIEW_COMMAND || startsWith(github.event.comment.body, format('{0} ', env.RALPH_REVIEW_COMMAND))) && github.event.comment.user.type != 'Bot')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
-      group: ralph-${{ github.event.issue.number }}
+      group: ralph-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +72,7 @@ jobs:
       - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          ralph_review_command: ${{ env.RALPH_REVIEW_COMMAND }}
 ```
 
 3. Create a `ralph` label in your repository
@@ -86,6 +97,7 @@ jobs:
 | `default_branch` | No | — | Default branch to merge into when using `squash-merge` strategy (auto-detected from repo if not specified) |
 | `worker_tone` | No | — | Personality/tone for the worker agent (e.g., "pirate", "formal", "enthusiastic"). If set, the worker will respond with this personality |
 | `reviewer_tone` | No | — | Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality |
+| `ralph_review_command` | No | `/ralph-review` | Slash command to trigger a re-review run on a Ralph-created PR (e.g., `/ralph-review focus on tests`) |
 
 ## Outputs
 
@@ -126,10 +138,11 @@ If a PR already exists (on re-runs), the reviewer updates the title directly via
 
 ### Triggers and Re-runs
 
-Ralph triggers in three ways:
+Ralph triggers in four ways:
 - **Label added:** When the `ralph` label is added to an issue (first run or re-trigger by removing and re-adding the label).
 - **Issue edited:** When an issue that already has the `ralph` label is edited (title or body changed). This lets you refine requirements and have Ralph re-process the updated task.
 - **Comment added:** When a new comment is posted on an issue that has the `ralph` label. This enables a conversational workflow where you can give Ralph follow-up instructions via comments. Ralph's own comments (identified by `<!-- ralph-comment-* -->` markers) do not retrigger the workflow. This works with the standard `GITHUB_TOKEN` — no PAT is required.
+- **`/ralph-review` on a Ralph PR:** When you post `/ralph-review` as a comment on a Ralph-created pull request, Ralph re-runs the loop incorporating all PR review feedback. See [PR Review Workflow](#pr-review-workflow) below.
 
 In all cases, Ralph detects the existing branch if one exists, checks it out, and continues from where it left off. The worker re-reads the task from the issue (which may have changed) and the branch's commit history to understand what was already done. New commits are added on top — Ralph never force-pushes.
 
@@ -208,6 +221,41 @@ If you need Ralph to edit workflow files, use a Personal Access Token (PAT) with
 
 **With a PAT (workflow scope):** Ralph can modify any file including workflows. Use this when tasks specifically require workflow changes.
 
+### PR Review Workflow
+
+Once Ralph opens a pull request, you can close the feedback loop without leaving GitHub:
+
+1. Review the PR normally — leave inline comments, an overall review, or both
+2. Post `/ralph-review` as a **comment on the PR** to trigger another Ralph run
+3. Ralph re-runs the full loop, incorporating all review feedback into the task context:
+   - Inline code comments (file, line, and body)
+   - Overall review bodies and their state (e.g., `CHANGES_REQUESTED`)
+4. Ralph commits the fixes and pushes to the same branch, updating the PR automatically
+
+**Passing reviewer instructions:** You can add extra guidance after the command. Everything after `/ralph-review` (separated by a space or newline) is passed to the worker as "Reviewer Instructions":
+
+```
+/ralph-review focus on error handling and add unit tests for the new functions
+```
+
+**Slash command constant:** Define the command string once at the workflow level so the job condition and the action input stay in sync:
+
+```yaml
+env:
+  RALPH_REVIEW_COMMAND: '/ralph-review'
+
+# In the job condition:
+(github.event_name == 'issue_comment' && github.event.issue.pull_request && \
+  (github.event.comment.body == env.RALPH_REVIEW_COMMAND || \
+   startsWith(github.event.comment.body, format('{0} ', env.RALPH_REVIEW_COMMAND))) && \
+  github.event.comment.user.type != 'Bot')
+
+# In the action step:
+ralph_review_command: ${{ env.RALPH_REVIEW_COMMAND }}
+```
+
+**Note:** Only non-bot users can trigger `/ralph-review`. Ralph's own comments are never used as triggers.
+
 ### Pull requests
 
 Ralph only works on **issues**. If the `ralph` label is added to a pull request, Ralph will post a comment explaining it can only work on issues, and exit without making changes.
@@ -263,6 +311,7 @@ shellcheck --severity=warning entrypoint.sh scripts/*.sh test/**/*.sh test/*.sh
 | | `test/integration/test-max-iterations.sh` | REVISE loop exhausts `INPUT_MAX_ITERATIONS`, exits with code 2 |
 | | `test/integration/test-error-handling.sh` | Worker failure triggers ERROR exit with code 1 |
 | | `test/integration/test-squash-merge.sh` | Squash-merge strategy writes `merge-commit.txt` instead of PR URL |
+| | `test/integration/test-pr-review-comment.sh` | `/ralph-review` slash command runs loop with PR review context in `task.md` |
 
 ### How Integration Tests Work
 
