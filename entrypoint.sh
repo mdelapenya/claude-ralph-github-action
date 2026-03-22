@@ -64,6 +64,12 @@ PR_NUMBER=""
 PR_BRANCH=""
 TEMP_ISSUE_NUMBER=""
 RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-/ralph-review}"
+# Guard: if the input is explicitly set to "" the :- default above does not fire,
+# which would make every PR comment match the command.
+if [[ -z "${RALPH_REVIEW_CMD}" ]]; then
+  echo "⚠️  Warning: ralph_review_command is empty, defaulting to '/ralph-review'"
+  RALPH_REVIEW_CMD="/ralph-review"
+fi
 RALPH_REVIEW_ARGS=""
 if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
   COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
