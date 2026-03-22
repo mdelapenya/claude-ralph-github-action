@@ -55,29 +55,47 @@ if ! command -v jq &> /dev/null; then
   exit 1
 fi
 
-# Detect whether this is a PR review event or a regular issue event.
-# Use GITHUB_EVENT_NAME (set by GitHub Actions) for unambiguous detection.
-# Checking .pull_request.number would be ambiguous because pull_request: [labeled]
-# events also carry that field.
+# Detect whether this is a /ralph-review slash command on a PR comment.
+# PR comments come through the issue_comment event with .issue.pull_request set.
+# The slash command avoids triggering on every review event and gives the user
+# explicit control over when to re-run the loop.
 PR_REVIEW_EVENT=false
 PR_NUMBER=""
 PR_BRANCH=""
 TEMP_ISSUE_NUMBER=""
-if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_review_comment" || \
-      "${GITHUB_EVENT_NAME:-}" == "pull_request_review" ]]; then
-  PR_REVIEW_EVENT=true
-  PR_NUMBER="$(jq -r '.pull_request.number' "${GITHUB_EVENT_PATH}")"
-  PR_BRANCH="$(jq -r '.pull_request.head.ref // ""' "${GITHUB_EVENT_PATH}")"
-  # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
-  if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
-    TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
+RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-/ralph-review}"
+RALPH_REVIEW_ARGS=""
+if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
+  COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
+  IS_PR_COMMENT="$(jq -r '.issue.pull_request // empty' "${GITHUB_EVENT_PATH}")"
+  # Match exact command, command + space args, or command + newline args.
+  # A bare prefix match (e.g. == "*") would accept "/ralph-review2" as valid.
+  if [[ -n "${IS_PR_COMMENT}" ]] && \
+     [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}" || \
+        "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD} "* || \
+        "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
+    PR_REVIEW_EVENT=true
+    PR_NUMBER="$(jq -r '.issue.number' "${GITHUB_EVENT_PATH}")"
+    PR_BRANCH="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>/dev/null || echo "")"
+    # Extract optional arguments after the command (space or newline separator)
+    if [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD} "* ]]; then
+      RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD} "}"
+    elif [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
+      RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD}"$'\n'}"
+    fi
+    # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
+    if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
+      TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
+    fi
+    if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
+      echo "❌ Error: Cannot determine issue number from PR branch: ${PR_BRANCH}"
+      echo "   Fix: The PR branch must follow the pattern 'ralph/issue-NNN'"
+      exit 1
+    fi
   fi
-  if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
-    echo "❌ Error: Cannot determine issue number from PR branch: ${PR_BRANCH}"
-    echo "   Fix: The PR branch must follow the pattern 'ralph/issue-NNN'"
-    exit 1
-  fi
-else
+fi
+
+if [[ "${PR_REVIEW_EVENT}" == "false" ]]; then
   TEMP_ISSUE_NUMBER="$(jq -r '.issue.number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")"
   if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
     echo "❌ Error: Event file does not contain a valid issue number"
@@ -142,9 +160,12 @@ if [[ "${PR_REVIEW_EVENT}" == "true" ]] && command -v gh &> /dev/null; then
   PR_REVIEWS="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
     --jq '.[] | select(.body != null and .body != "") | "### Review by @\(.user.login) (\(.state)):\n\n\(.body)\n"' \
     2>/dev/null || echo "")"
-  if [[ -n "${PR_INLINE_COMMENTS}" || -n "${PR_REVIEWS}" ]]; then
+  if [[ -n "${PR_INLINE_COMMENTS}" || -n "${PR_REVIEWS}" || -n "${RALPH_REVIEW_ARGS}" ]]; then
     PR_REVIEW_CONTEXT="# PR Review Feedback (PR #${PR_NUMBER})"$'\n'
-    PR_REVIEW_CONTEXT+="This run was triggered by a PR review comment on PR #${PR_NUMBER} (branch: ${PR_BRANCH}). Address all reviewer feedback below."$'\n'
+    PR_REVIEW_CONTEXT+="This run was triggered by the ${RALPH_REVIEW_CMD} slash command on PR #${PR_NUMBER} (branch: ${PR_BRANCH})."$'\n'
+    if [[ -n "${RALPH_REVIEW_ARGS}" ]]; then
+      PR_REVIEW_CONTEXT+=$'\n## Reviewer Instructions\n\n'"${RALPH_REVIEW_ARGS}"$'\n'
+    fi
     if [[ -n "${PR_INLINE_COMMENTS}" ]]; then
       PR_REVIEW_CONTEXT+=$'\n## Inline Code Comments\n\n'"${PR_INLINE_COMMENTS}"
     fi
