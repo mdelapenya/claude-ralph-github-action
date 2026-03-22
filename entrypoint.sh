@@ -235,7 +235,7 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 # --- Set up working branch ---
 WORKSPACE="${GITHUB_WORKSPACE}"
-cd "${WORKSPACE}"
+cd "${WORKSPACE}" || { echo "❌ Error: cannot cd to GITHUB_WORKSPACE: ${WORKSPACE}"; exit 1; }
 
 # Simplified: agents will handle branch context
 git fetch origin
