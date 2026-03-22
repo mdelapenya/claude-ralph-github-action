@@ -48,6 +48,8 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        # with:
+        #  token: ${{ secrets.GH_PAT_TOKEN }}
 
       # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
       # To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
