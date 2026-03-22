@@ -91,7 +91,7 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
         echo "   Fix: GH_TOKEN is not set — ensure the github_token input is provided"
       else
         GH_ERR_MSG="$(cat "${GH_PR_ERR}" 2>/dev/null || true)"
-        echo "   gh error: ${GH_ERR_MSG:-<no output>}"
+        echo "   gh error: ${GH_ERR_MSG:0:200}"
         echo "   Fix: Ensure the workflow has 'pull-requests: read' permission (or 'repo' scope if using a PAT) for ${GITHUB_REPOSITORY}"
       fi
       rm -f "${GH_PR_ERR}"
@@ -263,6 +263,8 @@ state_write_iteration "0"
   echo "workflow=${GITHUB_WORKFLOW:-unknown}"
   echo "worker_model=${INPUT_WORKER_MODEL:-sonnet}"
   echo "reviewer_model=${INPUT_REVIEWER_MODEL:-sonnet}"
+  echo "commit_author_name=${INPUT_COMMIT_AUTHOR_NAME:-claude-ralph[bot]}"
+  echo "commit_author_email=${INPUT_COMMIT_AUTHOR_EMAIL:-claude-ralph[bot]@users.noreply.github.com}"
 } > "${RALPH_DIR}/run-info.txt"
 
 # --- Validate merge_strategy before writing pr-info ---
