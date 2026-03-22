@@ -153,3 +153,15 @@ state_read_push_error() {
 state_clear_push_error() {
   rm -f "${RALPH_DIR}/push-error.txt"
 }
+
+# Append an audit event to .ralph/audit.log (append-only, tab-separated)
+# Args: $1 = phase (LOOP_START, WORKER_START, REVIEWER_END, DECISION, …)
+#        $2 = detail string (e.g. "iteration=1 result=SHIP")
+# Uses printf %s to prevent format-string injection. Never truncates the file (>> only).
+state_log_audit() {
+  local phase="$1"
+  local detail="${2:-}"
+  local ts
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  printf '%s\t%s\t%s\n' "${ts}" "${phase}" "${detail}" >> "${RALPH_DIR}/audit.log"
+}

@@ -765,6 +765,69 @@ test_state_write_task_xml_boundaries() {
   echo "PASS: state_write_task XML boundary structure is correct"
 }
 
+test_state_log_audit() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Audit log should be created on first call
+  state_log_audit "LOOP_START" "max=5"
+  if [[ ! -f ".ralph/audit.log" ]]; then
+    echo "FAIL: audit.log should be created by state_log_audit"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Entry should contain the phase string
+  if ! grep -q "LOOP_START" .ralph/audit.log; then
+    echo "FAIL: audit.log should contain LOOP_START phase"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Entry should contain the detail string
+  if ! grep -q "max=5" .ralph/audit.log; then
+    echo "FAIL: audit.log should contain detail string"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Second call should append (not overwrite)
+  state_log_audit "ITERATION_START" "iteration=1"
+  local line_count
+  line_count="$(wc -l < .ralph/audit.log | tr -d ' ')"
+  if [[ "${line_count}" -lt 2 ]]; then
+    echo "FAIL: audit.log should have at least 2 lines after two calls, got=${line_count}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Second entry should be present
+  if ! grep -q "ITERATION_START" .ralph/audit.log; then
+    echo "FAIL: audit.log should contain ITERATION_START phase"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Entries should have ISO-8601 timestamp format
+  if ! grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z' .ralph/audit.log; then
+    echo "FAIL: audit.log entries should have ISO-8601 timestamp"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_log_audit creates append-only audit log with correct format"
+}
+
 # Run all tests
 main() {
   local failed=0
@@ -788,6 +851,7 @@ main() {
   test_state_write_read_push_error || failed=$((failed + 1))
   test_state_read_push_error_default || failed=$((failed + 1))
   test_state_write_task_xml_boundaries || failed=$((failed + 1))
+  test_state_log_audit || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then

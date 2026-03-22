@@ -325,6 +325,32 @@ elif [[ -f ".ralph/pr-url.txt" ]]; then
   fi
 fi
 
+# --- Write GitHub Step Summary ---
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  {
+    echo "## Claude Ralph Run Summary"
+    echo ""
+    echo "| Field | Value |"
+    echo "|-------|-------|"
+    echo "| Status | \`${final_status}\` |"
+    echo "| Iterations | ${iteration} |"
+    echo "| Issue | [#${ISSUE_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |"
+    echo "| Worker Model | \`${INPUT_WORKER_MODEL:-sonnet}\` |"
+    echo "| Reviewer Model | \`${INPUT_REVIEWER_MODEL:-sonnet}\` |"
+    echo "| Run ID | [\`${GITHUB_RUN_ID:-unknown}\`](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID:-}) |"
+    if [[ -n "${pr_url_or_sha}" ]]; then
+      echo "| Result | ${effective_strategy}: ${pr_url_or_sha} |"
+    fi
+    if [[ -f ".ralph/audit.log" ]]; then
+      echo ""
+      echo "### Phase Audit Log"
+      echo '```'
+      cat ".ralph/audit.log"
+      echo '```'
+    fi
+  } >> "${GITHUB_STEP_SUMMARY}"
+fi
+
 # --- Set outputs ---
 {
   echo "pr_url=${pr_url_or_sha}"
