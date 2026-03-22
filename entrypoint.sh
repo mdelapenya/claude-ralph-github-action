@@ -97,6 +97,9 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
     elif [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
       RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD}"$'\n'}"
     fi
+    if [[ -n "${RALPH_REVIEW_ARGS}" ]]; then
+      echo "📝 Ralph review args: ${RALPH_REVIEW_ARGS}"
+    fi
     # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
     if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
       TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
@@ -244,12 +247,19 @@ state_write_issue_number "${ISSUE_NUMBER}"
 state_write_event_info "${EVENT_ACTION}" "${EVENT_COMMENT_ID}"
 state_write_iteration "0"
 
-# --- Write PR info for the reviewer agent (validation delegated to reviewer) ---
+# --- Validate merge_strategy before writing pr-info ---
+merge_strategy="${INPUT_MERGE_STRATEGY:-pr}"
+if [[ "${merge_strategy}" != "pr" && "${merge_strategy}" != "squash-merge" ]]; then
+  echo "⚠️  Warning: invalid merge_strategy '${merge_strategy}', defaulting to 'pr'"
+  merge_strategy="pr"
+fi
+
+# --- Write PR info for the reviewer agent ---
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
-  echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
+  echo "merge_strategy=${merge_strategy}"
   echo "default_branch=${INPUT_DEFAULT_BRANCH:-${BASE_BRANCH}}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
