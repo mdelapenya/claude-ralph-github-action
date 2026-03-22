@@ -47,7 +47,13 @@ jobs:
       group: ralph-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
+      # If Ralph needs to modify .github/workflows/ files, the checkout step must use a PAT
+      # with the `workflow` scope. git push uses the credentials persisted by checkout, so
+      # passing a PAT only to the action's `github_token` input is not sufficient — the push
+      # will still fail with GITHUB_TOKEN (which cannot update workflow files).
       - uses: actions/checkout@v4
+        # with:
+        #   token: ${{ secrets.GH_PAT_TOKEN }}  # Required for workflow-file pushes
 
       # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
       # To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish

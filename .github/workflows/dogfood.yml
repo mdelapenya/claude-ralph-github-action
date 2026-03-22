@@ -47,7 +47,13 @@ jobs:
       group: ralph-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
+      # Use GH_PAT_TOKEN so git push uses PAT credentials persisted by checkout.
+      # The default GITHUB_TOKEN cannot push workflow-file changes; passing the PAT
+      # only to the action's github_token input is not sufficient because git push
+      # uses whichever token was used to clone the repo.
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT_TOKEN }}
 
       - name: Restore Docker image cache
         id: docker-cache
