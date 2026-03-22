@@ -188,8 +188,18 @@ case "${1:-}" in
     # Log API calls for test verification
     log_file="${MOCK_GH_API_LOG:-/dev/null}"
     echo "gh $*" >> "${log_file}"
-    # Return a minimal JSON response for reactions
-    echo '{"id":1,"content":"+1"}'
+    # Return appropriate responses based on endpoint
+    endpoint="${2:-}"
+    if [[ "${endpoint}" == *"/pulls/"*"/comments" ]]; then
+      # PR review inline comments — return mock inline comment
+      echo '[{"user":{"login":"reviewer"},"path":"src/main.sh","line":42,"original_line":42,"body":"This function should be refactored for clarity."}]'
+    elif [[ "${endpoint}" == *"/pulls/"*"/reviews" ]]; then
+      # PR reviews — return mock overall review
+      echo '[{"user":{"login":"reviewer"},"state":"CHANGES_REQUESTED","body":"Please address the naming issues and add error handling."}]'
+    else
+      # Return a minimal JSON response for reactions
+      echo '{"id":1,"content":"+1"}'
+    fi
     ;;
   *)
     echo "mock gh: unknown command ${1:-}"
