@@ -55,8 +55,9 @@ if ! command -v jq &> /dev/null; then
   exit 1
 fi
 
-# Detect whether this is a /ralph-review slash command on a PR comment.
+# Detect whether this is a /ralph-review slash command on a PR comment or review.
 # PR comments come through the issue_comment event with .issue.pull_request set.
+# PR reviews come through the pull_request_review event when the review is submitted.
 # The slash command avoids triggering on every review event and gives the user
 # explicit control over when to re-run the loop.
 PR_REVIEW_EVENT=false
@@ -65,48 +66,76 @@ PR_BRANCH=""
 TEMP_ISSUE_NUMBER=""
 RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-/ralph-review}"
 RALPH_REVIEW_ARGS=""
-if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
-  COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
-  IS_PR_COMMENT="$(jq -r '.issue.pull_request // empty' "${GITHUB_EVENT_PATH}")"
+
+# Helper: extract slash command args and set PR_REVIEW_EVENT=true
+# Usage: _try_parse_ralph_review_body <body> <pr_number> <pr_branch_or_empty>
+_try_parse_ralph_review_body() {
+  local body="$1" pr_num="$2" branch="${3:-}"
+
   # Match exact command, command + space args, or command + newline args.
-  # A bare prefix match (e.g. == "*") would accept "/ralph-review2" as valid.
-  if [[ -n "${IS_PR_COMMENT}" ]] && \
-     [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}" || \
-        "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD} "* || \
-        "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
-    PR_REVIEW_EVENT=true
-    PR_NUMBER="$(jq -r '.issue.number' "${GITHUB_EVENT_PATH}")"
-    GH_PR_ERR="$(mktemp)"
-    PR_BRANCH="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>"${GH_PR_ERR}" || true)"
-    if [[ -z "${PR_BRANCH}" ]]; then
+  if [[ "${body}" != "${RALPH_REVIEW_CMD}" && \
+        "${body}" != "${RALPH_REVIEW_CMD} "* && \
+        "${body}" != "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
+    return 1
+  fi
+
+  PR_REVIEW_EVENT=true
+  PR_NUMBER="${pr_num}"
+
+  # If branch was not provided by the caller, fetch it via gh
+  if [[ -z "${branch}" ]]; then
+    local gh_err
+    gh_err="$(mktemp)"
+    branch="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>"${gh_err}" || true)"
+    if [[ -z "${branch}" ]]; then
       echo "❌ Error: Failed to fetch branch for PR #${PR_NUMBER} via gh pr view"
       if [[ -z "${GH_TOKEN:-}" ]]; then
         echo "   Fix: GH_TOKEN is not set — ensure the github_token input is provided"
       else
-        GH_ERR_MSG="$(cat "${GH_PR_ERR}" 2>/dev/null || true)"
-        echo "   gh error: ${GH_ERR_MSG:-<no output>}"
+        local gh_err_msg
+        gh_err_msg="$(cat "${gh_err}" 2>/dev/null || true)"
+        echo "   gh error: ${gh_err_msg:-<no output>}"
         echo "   Fix: Ensure the workflow has 'pull-requests: read' permission (or 'repo' scope if using a PAT) for ${GITHUB_REPOSITORY}"
       fi
-      rm -f "${GH_PR_ERR}"
+      rm -f "${gh_err}"
       exit 1
     fi
-    rm -f "${GH_PR_ERR}"
-    # Extract optional arguments after the command (space or newline separator)
-    if [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD} "* ]]; then
-      RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD} "}"
-    elif [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
-      RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD}"$'\n'}"
-    fi
-    # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
-    if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
-      TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
-    fi
-    if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
-      echo "❌ Error: Cannot determine issue number from PR branch: ${PR_BRANCH}"
-      echo "   Fix: The PR branch must follow the pattern 'ralph/issue-NNN'"
-      exit 1
-    fi
+    rm -f "${gh_err}"
   fi
+  PR_BRANCH="${branch}"
+
+  # Extract optional arguments after the command (space or newline separator)
+  if [[ "${body}" == "${RALPH_REVIEW_CMD} "* ]]; then
+    RALPH_REVIEW_ARGS="${body#"${RALPH_REVIEW_CMD} "}"
+  elif [[ "${body}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
+    RALPH_REVIEW_ARGS="${body#"${RALPH_REVIEW_CMD}"$'\n'}"
+  fi
+
+  # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
+  if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
+    TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
+  fi
+  if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
+    echo "❌ Error: Cannot determine issue number from PR branch: ${PR_BRANCH}"
+    echo "   Fix: The PR branch must follow the pattern 'ralph/issue-NNN'"
+    exit 1
+  fi
+  return 0
+}
+
+if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
+  COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
+  IS_PR_COMMENT="$(jq -r '.issue.pull_request // empty' "${GITHUB_EVENT_PATH}")"
+  if [[ -n "${IS_PR_COMMENT}" ]]; then
+    _try_parse_ralph_review_body "${COMMENT_BODY}" "$(jq -r '.issue.number' "${GITHUB_EVENT_PATH}")" "" || true
+  fi
+elif [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_review" ]]; then
+  # PR review submitted via the GitHub review form (Approve/Comment/Request changes).
+  # The review body is at .review.body; PR number and branch are directly in the payload.
+  REVIEW_BODY="$(jq -r '.review.body // ""' "${GITHUB_EVENT_PATH}")"
+  REVIEW_PR_NUMBER="$(jq -r '.pull_request.number' "${GITHUB_EVENT_PATH}")"
+  REVIEW_PR_BRANCH="$(jq -r '.pull_request.head.ref' "${GITHUB_EVENT_PATH}")"
+  _try_parse_ralph_review_body "${REVIEW_BODY}" "${REVIEW_PR_NUMBER}" "${REVIEW_PR_BRANCH}" || true
 fi
 
 if [[ "${PR_REVIEW_EVENT}" == "false" ]]; then
@@ -137,7 +166,8 @@ if [[ "${PR_REVIEW_EVENT}" == "true" ]]; then
   ISSUE_TITLE="$(gh issue view "${ISSUE_NUMBER}" --json title --jq '.title' 2>/dev/null || echo "Issue #${ISSUE_NUMBER}")"
   ISSUE_BODY="$(gh issue view "${ISSUE_NUMBER}" --json body --jq '.body // ""' 2>/dev/null || echo "")"
   IS_PULL_REQUEST=""
-  EVENT_COMMENT_ID="$(jq -r '.comment.id // ""' "${EVENT_PATH}")"
+  # For pull_request_review events, use .review.id; for issue_comment events, use .comment.id
+  EVENT_COMMENT_ID="$(jq -r '.comment.id // .review.id // ""' "${EVENT_PATH}")"
 else
   ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
   ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"

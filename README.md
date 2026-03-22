@@ -27,6 +27,8 @@ on:
     types: [created]
   pull_request:
     types: [labeled]
+  pull_request_review:
+    types: [submitted]
 
 permissions:
   contents: write
@@ -57,7 +59,8 @@ jobs:
       (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ralph') ||
       (github.event_name == 'issues' && github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'ralph')) ||
       (github.event_name == 'issue_comment' && github.event.action == 'created' && contains(github.event.issue.labels.*.name, 'ralph') && github.event.comment.user.type != 'Bot' && !contains(github.event.comment.body, '<!-- ralph-comment-') && !github.event.issue.pull_request) ||
-      (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot')
+      (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review' && github.event.action == 'submitted' && github.event.review.user.type != 'Bot' && (github.event.review.body == '/ralph-review' || startsWith(github.event.review.body, '/ralph-review ')))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -224,7 +227,9 @@ If you need Ralph to edit workflow files, use a Personal Access Token (PAT) with
 Once Ralph opens a pull request, you can close the feedback loop without leaving GitHub:
 
 1. Review the PR normally — leave inline comments, an overall review, or both
-2. Post `/ralph-review` as a **comment on the PR** to trigger another Ralph run
+2. Trigger another Ralph run by either:
+   - Posting `/ralph-review` as a **comment on the PR**, or
+   - Including `/ralph-review` in the **review body** when submitting a PR review (Approve/Comment/Request changes)
 3. Ralph re-runs the full loop, incorporating all review feedback into the task context:
    - Inline code comments (file, line, and body)
    - Overall review bodies and their state (e.g., `CHANGES_REQUESTED`)
@@ -239,10 +244,11 @@ Once Ralph opens a pull request, you can close the feedback loop without leaving
 **Customizing the slash command:** If you want to use a different command (e.g., `/review`), change the literal string in both the job `if` condition and the `ralph_review_command` action input. The `env` context is not available in job-level `if` conditions (a GitHub Actions limitation), so the command string must be hardcoded there:
 
 ```yaml
-# Job-level if: hardcode the literal string
+# Job-level if: hardcode the literal string for both issue_comment and pull_request_review
 if: >-
   ...
-  (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot')
+  (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot') ||
+  (github.event_name == 'pull_request_review' && github.event.action == 'submitted' && github.event.review.user.type != 'Bot' && (github.event.review.body == '/ralph-review' || startsWith(github.event.review.body, '/ralph-review ')))
 
 # Action step: pass as input so entrypoint.sh knows the command
       - uses: mdelapenya/claude-ralph-github-action@v1
