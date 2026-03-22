@@ -115,14 +115,22 @@ When the validated `merge_strategy` is `squash-merge` in `.ralph/pr-info.txt` an
    - Reset to the remote ref to ensure you're up to date: `git checkout -B <default-branch> origin/<default-branch>`
    - Squash merge the working branch: `git merge --squash <working-branch>`
    - If the squash merge produces conflicts, resolve them (keeping both sides' changes), then `git add` the resolved files.
-   - Commit using a heredoc for the multi-line message:
+   - Commit using a heredoc for the multi-line message. Read run provenance
+     from `.ralph/run-info.txt` and append trailers for auditability:
      ```bash
-     git commit -m "$(cat <<'EOF'
+     run_id="$(grep '^run_id=' .ralph/run-info.txt | cut -d= -f2-)"
+     run_url="$(grep '^run_url=' .ralph/run-info.txt | cut -d= -f2-)"
+     reviewer_model="$(grep '^reviewer_model=' .ralph/run-info.txt | cut -d= -f2-)"
+     git commit -m "$(cat <<EOF
      <pr-title>
 
      Closes #<issue-number>
 
      Squash-merged by Ralph after <iteration> iteration(s).
+
+     Ralph-Run-Id: ${run_id}
+     Ralph-Run-Url: ${run_url}
+     Ralph-Reviewer-Model: ${reviewer_model}
      EOF
      )"
      ```

@@ -254,6 +254,17 @@ state_write_issue_number "${ISSUE_NUMBER}"
 state_write_event_info "${EVENT_ACTION}" "${EVENT_COMMENT_ID}"
 state_write_iteration "0"
 
+# --- Write run provenance for agent commit trailers ---
+{
+  echo "run_id=${GITHUB_RUN_ID:-unknown}"
+  echo "run_url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID:-unknown}"
+  echo "base_sha=${GITHUB_SHA:-unknown}"
+  echo "repository=${GITHUB_REPOSITORY:-unknown}"
+  echo "workflow=${GITHUB_WORKFLOW:-unknown}"
+  echo "worker_model=${INPUT_WORKER_MODEL:-sonnet}"
+  echo "reviewer_model=${INPUT_REVIEWER_MODEL:-sonnet}"
+} > "${RALPH_DIR}/run-info.txt"
+
 # --- Validate merge_strategy before writing pr-info ---
 merge_strategy="${INPUT_MERGE_STRATEGY:-pr}"
 if [[ "${merge_strategy}" != "pr" && "${merge_strategy}" != "squash-merge" ]]; then
