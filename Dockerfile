@@ -19,5 +19,7 @@ COPY scripts/ /scripts/
 COPY prompts/ /prompts/
 
 RUN chmod +x /entrypoint.sh /scripts/*.sh
+# Prevent agents (worker/reviewer) from tampering with scripts or prompts at runtime
+RUN chmod -R a-w /scripts /prompts
 
 ENTRYPOINT ["/entrypoint.sh"]
