@@ -66,6 +66,14 @@ inputs:
     description: 'Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality.'
     required: false
     default: ''
+  commit_author_name:
+    description: 'Git author name for commits (defaults to "claude-ralph[bot]")'
+    required: false
+    default: 'claude-ralph[bot]'
+  commit_author_email:
+    description: 'Git author email for commits (defaults to "claude-ralph[bot]@users.noreply.github.com")'
+    required: false
+    default: 'claude-ralph[bot]@users.noreply.github.com'
   ralph_review_command:
     description: 'Slash command to trigger a re-review on a Ralph PR (e.g., "/ralph-review focus on tests")'
     required: false
@@ -98,4 +106,6 @@ runs:
     INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
     INPUT_WORKER_TONE: ${{ inputs.worker_tone }}
     INPUT_REVIEWER_TONE: ${{ inputs.reviewer_tone }}
+    INPUT_COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
+    INPUT_COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
     INPUT_RALPH_REVIEW_COMMAND: ${{ inputs.ralph_review_command }}

@@ -93,6 +93,8 @@ jobs:
 | `default_branch` | No | — | Default branch to merge into when using `squash-merge` strategy (auto-detected from repo if not specified) |
 | `worker_tone` | No | — | Personality/tone for the worker agent (e.g., "pirate", "formal", "enthusiastic"). If set, the worker will respond with this personality |
 | `reviewer_tone` | No | — | Personality/tone for the reviewer agent (e.g., "pirate", "formal", "enthusiastic"). If set, the reviewer will respond with this personality |
+| `commit_author_name` | No | `claude-ralph[bot]` | Git author name for commits |
+| `commit_author_email` | No | `claude-ralph[bot]@users.noreply.github.com` | Git author email for commits |
 | `ralph_review_command` | No | `/ralph-review` | Slash command to trigger a re-review run on a Ralph-created PR (e.g., `/ralph-review focus on tests`) |
 
 ## Outputs
