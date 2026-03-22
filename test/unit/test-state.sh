@@ -455,6 +455,187 @@ test_state_read_event_info_default() {
   echo "PASS: state event info returns empty by default"
 }
 
+test_state_write_task_with_pr_review_feedback() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Simulate PR review feedback appended as comments (as entrypoint.sh does
+  # when triggered by pull_request_review_comment or pull_request_review events)
+  local pr_review_context
+  pr_review_context=$'# PR Review Feedback (PR #999)\nThis run was triggered by a PR review comment on PR #999 (branch: ralph/issue-42). Address all reviewer feedback below.\n\n## Inline Code Comments\n\n### Inline comment by @reviewer on `src/main.sh`:42:\n\nThis function should be refactored for clarity.\n\n## Overall Reviews\n\n### Review by @reviewer (CHANGES_REQUESTED):\n\nPlease address the naming issues and add error handling.'
+
+  state_write_task "Implement feature X" "Add support for feature X." "${pr_review_context}"
+
+  if [[ ! -f ".ralph/task.md" ]]; then
+    echo "FAIL: task.md should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "# Implement feature X" .ralph/task.md; then
+    echo "FAIL: task.md should contain the issue title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Add support for feature X." .ralph/task.md; then
+    echo "FAIL: task.md should contain the issue body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Issue Comments" .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comments section"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "PR Review Feedback (PR #999)" .ralph/task.md; then
+    echo "FAIL: task.md should contain PR review feedback header"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q 'Inline comment by @reviewer on `src/main.sh`:42' .ralph/task.md; then
+    echo "FAIL: task.md should contain inline code comment with file path and line number"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "This function should be refactored" .ralph/task.md; then
+    echo "FAIL: task.md should contain inline comment body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Review by @reviewer (CHANGES_REQUESTED)" .ralph/task.md; then
+    echo "FAIL: task.md should contain overall review header"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "naming issues and add error handling" .ralph/task.md; then
+    echo "FAIL: task.md should contain overall review body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task with PR review feedback works correctly"
+}
+
+test_state_write_task_with_comments_and_pr_review_feedback() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Simulate both issue comments and PR review feedback present at the same time
+  local issue_comments
+  issue_comments=$'Great idea! Let me work on this.\n---\nWhat about edge cases?'
+
+  local pr_review_context
+  pr_review_context=$'# PR Review Feedback (PR #100)\nThis run was triggered by a PR review comment on PR #100 (branch: ralph/issue-50). Address all reviewer feedback below.\n\n## Inline Code Comments\n\n### Inline comment by @dev on `lib/utils.sh`:15:\n\nThis variable name is too generic.\n\n## Overall Reviews\n\n### Review by @dev (CHANGES_REQUESTED):\n\nPlease rename variables for clarity.'
+
+  local combined_comments
+  combined_comments="${issue_comments}"$'\n\n'"${pr_review_context}"
+
+  state_write_task "Fix naming" "Rename variables in utils." "${combined_comments}"
+
+  if [[ ! -f ".ralph/task.md" ]]; then
+    echo "FAIL: task.md should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "# Fix naming" .ralph/task.md; then
+    echo "FAIL: task.md should contain the issue title"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Rename variables in utils." .ralph/task.md; then
+    echo "FAIL: task.md should contain the issue body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Issue Comments" .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comments section"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Great idea! Let me work on this." .ralph/task.md; then
+    echo "FAIL: task.md should contain issue comment text"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "What about edge cases?" .ralph/task.md; then
+    echo "FAIL: task.md should contain second issue comment"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "PR Review Feedback (PR #100)" .ralph/task.md; then
+    echo "FAIL: task.md should contain PR review feedback header"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q 'Inline comment by @dev on `lib/utils.sh`:15' .ralph/task.md; then
+    echo "FAIL: task.md should contain inline code comment with file path and line number"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "This variable name is too generic." .ralph/task.md; then
+    echo "FAIL: task.md should contain inline comment body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Review by @dev (CHANGES_REQUESTED)" .ralph/task.md; then
+    echo "FAIL: task.md should contain overall review header"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  if ! grep -q "Please rename variables for clarity." .ralph/task.md; then
+    echo "FAIL: task.md should contain overall review body"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_task with both issue comments and PR review feedback works correctly"
+}
+
 test_state_write_read_push_error() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -529,6 +710,8 @@ main() {
   test_state_write_read_event_info_labeled || failed=$((failed + 1))
   test_state_write_read_event_info_comment || failed=$((failed + 1))
   test_state_read_event_info_default || failed=$((failed + 1))
+  test_state_write_task_with_pr_review_feedback || failed=$((failed + 1))
+  test_state_write_task_with_comments_and_pr_review_feedback || failed=$((failed + 1))
   test_state_write_read_push_error || failed=$((failed + 1))
   test_state_read_push_error_default || failed=$((failed + 1))
 
