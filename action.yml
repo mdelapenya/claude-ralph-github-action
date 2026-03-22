@@ -69,11 +69,11 @@ inputs:
   commit_author_name:
     description: 'Git author name for commits (defaults to "claude-ralph[bot]")'
     required: false
-    default: ''
+    default: 'claude-ralph[bot]'
   commit_author_email:
     description: 'Git author email for commits (defaults to "claude-ralph[bot]@users.noreply.github.com")'
     required: false
-    default: ''
+    default: 'claude-ralph[bot]@users.noreply.github.com'
   ralph_review_command:
     description: 'Slash command to trigger a re-review on a Ralph PR (e.g., "/ralph-review focus on tests")'
     required: false

@@ -76,7 +76,21 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
         "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
     PR_REVIEW_EVENT=true
     PR_NUMBER="$(jq -r '.issue.number' "${GITHUB_EVENT_PATH}")"
-    PR_BRANCH="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>/dev/null || echo "")"
+    GH_PR_ERR="$(mktemp)"
+    PR_BRANCH="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>"${GH_PR_ERR}" || true)"
+    if [[ -z "${PR_BRANCH}" ]]; then
+      echo "❌ Error: Failed to fetch branch for PR #${PR_NUMBER} via gh pr view"
+      if [[ -z "${GH_TOKEN:-}" ]]; then
+        echo "   Fix: GH_TOKEN is not set — ensure the github_token input is provided"
+      else
+        GH_ERR_MSG="$(cat "${GH_PR_ERR}" 2>/dev/null || true)"
+        echo "   gh error: ${GH_ERR_MSG:-<no output>}"
+        echo "   Fix: Ensure the workflow has 'pull-requests: read' permission (or 'repo' scope if using a PAT) for ${GITHUB_REPOSITORY}"
+      fi
+      rm -f "${GH_PR_ERR}"
+      exit 1
+    fi
+    rm -f "${GH_PR_ERR}"
     # Extract optional arguments after the command (space or newline separator)
     if [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD} "* ]]; then
       RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD} "}"
@@ -204,10 +218,8 @@ echo "🌿 Branch: ${BRANCH_NAME}"
 echo "🏠 Base: ${BASE_BRANCH}"
 
 # --- Configure git ---
-GIT_AUTHOR_NAME="${INPUT_COMMIT_AUTHOR_NAME:-claude-ralph[bot]}"
-GIT_AUTHOR_EMAIL="${INPUT_COMMIT_AUTHOR_EMAIL:-claude-ralph[bot]@users.noreply.github.com}"
-git config --global user.name "${GIT_AUTHOR_NAME}"
-git config --global user.email "${GIT_AUTHOR_EMAIL}"
+git config --global user.name "${INPUT_COMMIT_AUTHOR_NAME}"
+git config --global user.email "${INPUT_COMMIT_AUTHOR_EMAIL}"
 # Docker runs as a different user than the checkout owner; mark workspace as safe
 git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
