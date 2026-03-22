@@ -352,7 +352,8 @@ To run tests in your CI workflow, copy the job definitions from `test/ci-example
 # Requires Docker and an Anthropic API key
 ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 
-# With verbose Claude CLI output
+# With verbose Claude CLI output (⚠️ security: logs include full tool call payloads and file contents;
+# do not enable in workflows where runner logs are publicly visible)
 RALPH_VERBOSE=true ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 
 # Override defaults

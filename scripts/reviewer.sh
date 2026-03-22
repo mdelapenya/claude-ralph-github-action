@@ -54,6 +54,7 @@ cli_args=(
 )
 
 if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
+  echo "⚠️  RALPH_VERBOSE=true — agent output includes full tool call details. Do not use in production or in workflows where runner logs are publicly visible."
   cli_args+=(--verbose)
 fi
 
