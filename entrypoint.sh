@@ -55,12 +55,35 @@ if ! command -v jq &> /dev/null; then
   exit 1
 fi
 
-# Check issue number from event file
-TEMP_ISSUE_NUMBER="$(jq -r '.issue.number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")"
-if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
-  echo "❌ Error: Event file does not contain a valid issue number"
-  echo "   Fix: Ensure this action is triggered by an issue event"
-  exit 1
+# Detect whether this is a PR review event or a regular issue event.
+# Use GITHUB_EVENT_NAME (set by GitHub Actions) for unambiguous detection.
+# Checking .pull_request.number would be ambiguous because pull_request: [labeled]
+# events also carry that field.
+PR_REVIEW_EVENT=false
+PR_NUMBER=""
+PR_BRANCH=""
+TEMP_ISSUE_NUMBER=""
+if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_review_comment" || \
+      "${GITHUB_EVENT_NAME:-}" == "pull_request_review" ]]; then
+  PR_REVIEW_EVENT=true
+  PR_NUMBER="$(jq -r '.pull_request.number' "${GITHUB_EVENT_PATH}")"
+  PR_BRANCH="$(jq -r '.pull_request.head.ref // ""' "${GITHUB_EVENT_PATH}")"
+  # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
+  if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
+    TEMP_ISSUE_NUMBER="${BASH_REMATCH[1]}"
+  fi
+  if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
+    echo "❌ Error: Cannot determine issue number from PR branch: ${PR_BRANCH}"
+    echo "   Fix: The PR branch must follow the pattern 'ralph/issue-NNN'"
+    exit 1
+  fi
+else
+  TEMP_ISSUE_NUMBER="$(jq -r '.issue.number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")"
+  if [[ -z "${TEMP_ISSUE_NUMBER}" ]]; then
+    echo "❌ Error: Event file does not contain a valid issue number"
+    echo "   Fix: Ensure this action is triggered by an issue event"
+    exit 1
+  fi
 fi
 
 if ! [[ "${TEMP_ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
@@ -71,12 +94,25 @@ fi
 
 # --- Extract issue data from GitHub event ---
 EVENT_PATH="${GITHUB_EVENT_PATH}"
-ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
-ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"
-ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
-IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
 EVENT_ACTION="$(jq -r '.action // ""' "${EVENT_PATH}")"
-EVENT_COMMENT_ID="$(jq -r '.comment.id // ""' "${EVENT_PATH}")"
+
+if [[ "${PR_REVIEW_EVENT}" == "true" ]]; then
+  # PR review event: fetch issue data from GitHub API using the issue number
+  # extracted from the branch name (the issue JSON is not present in this event type)
+  echo "🔗 PR review event: PR #${PR_NUMBER} on branch ${PR_BRANCH}"
+  echo "📋 Fetching data for issue #${TEMP_ISSUE_NUMBER}..."
+  ISSUE_NUMBER="${TEMP_ISSUE_NUMBER}"
+  ISSUE_TITLE="$(gh issue view "${ISSUE_NUMBER}" --json title --jq '.title' 2>/dev/null || echo "Issue #${ISSUE_NUMBER}")"
+  ISSUE_BODY="$(gh issue view "${ISSUE_NUMBER}" --json body --jq '.body // ""' 2>/dev/null || echo "")"
+  IS_PULL_REQUEST=""
+  EVENT_COMMENT_ID="$(jq -r '.comment.id // ""' "${EVENT_PATH}")"
+else
+  ISSUE_NUMBER="$(jq -r '.issue.number' "${EVENT_PATH}")"
+  ISSUE_TITLE="$(jq -r '.issue.title' "${EVENT_PATH}")"
+  ISSUE_BODY="$(jq -r '.issue.body // ""' "${EVENT_PATH}")"
+  IS_PULL_REQUEST="$(jq -r '.issue.pull_request // empty' "${EVENT_PATH}")"
+  EVENT_COMMENT_ID="$(jq -r '.comment.id // ""' "${EVENT_PATH}")"
+fi
 
 # --- Fetch all issue comments to compound the context ---
 # Comments provide additional context for agents. New comments on a labeled issue
@@ -95,7 +131,38 @@ else
   echo "⚠️  gh command not available, skipping comment fetch"
 fi
 
-# --- Reject pull requests ---
+# --- Fetch PR review comments when triggered by a PR review event ---
+# Inline code comments and overall review bodies are appended to the task context
+# so the worker agent can address the specific feedback from the PR reviewer.
+if [[ "${PR_REVIEW_EVENT}" == "true" ]] && command -v gh &> /dev/null; then
+  echo "💬 Fetching PR #${PR_NUMBER} review comments..."
+  PR_INLINE_COMMENTS="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
+    --jq '.[] | "### Inline comment by @\(.user.login) on `\(.path)`:\(.line // .original_line // "?"):\n\n\(.body)\n"' \
+    2>/dev/null || echo "")"
+  PR_REVIEWS="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+    --jq '.[] | select(.body != null and .body != "") | "### Review by @\(.user.login) (\(.state)):\n\n\(.body)\n"' \
+    2>/dev/null || echo "")"
+  if [[ -n "${PR_INLINE_COMMENTS}" || -n "${PR_REVIEWS}" ]]; then
+    PR_REVIEW_CONTEXT="# PR Review Feedback (PR #${PR_NUMBER})"$'\n'
+    PR_REVIEW_CONTEXT+="This run was triggered by a PR review comment on PR #${PR_NUMBER} (branch: ${PR_BRANCH}). Address all reviewer feedback below."$'\n'
+    if [[ -n "${PR_INLINE_COMMENTS}" ]]; then
+      PR_REVIEW_CONTEXT+=$'\n## Inline Code Comments\n\n'"${PR_INLINE_COMMENTS}"
+    fi
+    if [[ -n "${PR_REVIEWS}" ]]; then
+      PR_REVIEW_CONTEXT+=$'\n## Overall Reviews\n\n'"${PR_REVIEWS}"
+    fi
+    echo "✅ Found PR review context for PR #${PR_NUMBER}"
+    if [[ -n "${ISSUE_COMMENTS}" ]]; then
+      ISSUE_COMMENTS+=$'\n\n'"${PR_REVIEW_CONTEXT}"
+    else
+      ISSUE_COMMENTS="${PR_REVIEW_CONTEXT}"
+    fi
+  else
+    echo "ℹ️  No PR review comments found for PR #${PR_NUMBER}"
+  fi
+fi
+
+# --- Reject pull requests labeled with ralph (not PR review events) ---
 if [[ -n "${IS_PULL_REQUEST}" ]]; then
   echo "⚠️  Ralph was triggered on a pull request (#${ISSUE_NUMBER}), not an issue. Skipping."
   gh issue comment "${ISSUE_NUMBER}" --body "🤖 **Ralph** can only work on issues, not pull requests. Please label an issue instead." || true
