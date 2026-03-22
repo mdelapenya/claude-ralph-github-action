@@ -162,7 +162,7 @@ test_no_reaction_on_subsequent_iterations() {
   export MOCK_GH_API_LOG="${tmpdir}/gh-api-calls.log"
   touch "${MOCK_GH_API_LOG}"
 
-  # First iteration: REVISE, second iteration: SHIP
+  # Both iterations REVISE — loop exits with code 2 (max iterations reached)
   export MOCK_REVIEW_DECISION="REVISE"
 
   cd "${workspace}"
@@ -179,18 +179,23 @@ test_no_reaction_on_subsequent_iterations() {
   # Create the branch
   git checkout -b ralph/issue-42 > /dev/null 2>&1
 
-  # Run just 2 iterations (first REVISE, then SHIP)
+  # Run 2 iterations, both REVISE (max_iterations reached)
   export INPUT_MAX_ITERATIONS=2
 
-  # We need the mock to SHIP on iteration 2
-  # Override the mock to track which iteration it's on and change behavior
-  # For simplicity, just run with REVISE for 2 iterations (max_iterations)
   local exit_code=0
   "${SCRIPTS_DIR}/ralph-loop.sh" || exit_code=$?
 
+  # Expect exit code 2 (max iterations reached without SHIP)
+  if [[ ${exit_code} -ne 2 ]]; then
+    echo "FAIL: expected exit code 2 (max iterations), got ${exit_code}"
+    teardown_mock_binaries
+    cleanup_test_workspace "${tmpdir}"
+    return 1
+  fi
+
   # Count how many reaction API calls were made
   local reaction_count
-  reaction_count="$(grep -c "reactions" "${MOCK_GH_API_LOG}" || echo 0)"
+  reaction_count="$(grep -c "reactions" "${MOCK_GH_API_LOG}" || true)"
 
   if [[ "${reaction_count}" -ne 1 ]]; then
     echo "FAIL: expected exactly 1 reaction call, got ${reaction_count}"

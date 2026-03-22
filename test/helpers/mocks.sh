@@ -184,7 +184,7 @@ case "${1:-}" in
   api)
     # Log API calls for test verification
     log_file="${MOCK_GH_API_LOG:-/dev/null}"
-    echo "gh api $*" >> "${log_file}"
+    echo "gh $*" >> "${log_file}"
     # Return a minimal JSON response for reactions
     echo '{"id":1,"content":"+1"}'
     ;;

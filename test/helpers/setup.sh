@@ -99,7 +99,7 @@ create_event_json() {
   if [[ -n "${comment_id}" ]]; then
     comment_block="$(cat <<COMMENT
   "comment": {
-    "id": ${comment_id},
+    "id": "${comment_id}",
     "user": {
       "login": "testuser",
       "type": "User"
