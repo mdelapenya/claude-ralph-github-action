@@ -54,6 +54,7 @@ if [[ "${prompt}" == *"You are the reviewer"* ]] || [[ "${prompt}" == *"Review t
   # --- Reviewer mode ---
   decision="${MOCK_REVIEW_DECISION:-SHIP}"
 
+  chmod u+w .ralph/review-result.txt   2>/dev/null || true
   echo "${decision}" > .ralph/review-result.txt
 
   if [[ "${decision}" == "SHIP" ]]; then
@@ -71,6 +72,7 @@ if [[ "${prompt}" == *"You are the reviewer"* ]] || [[ "${prompt}" == *"Review t
       echo "Mock reviewer: SHIP with PR"
     fi
   else
+    chmod u+w .ralph/review-feedback.txt 2>/dev/null || true
     echo "Please fix the issues found in the code." > .ralph/review-feedback.txt
     echo "Mock reviewer: REVISE"
   fi
@@ -118,6 +120,7 @@ elif [[ "${prompt}" == *"Work on the task"* ]] || [[ "${prompt}" == *"You are on
   git commit -m "feat: add worker output for iteration ${iteration}"
 
   # Write work summary
+  chmod u+w .ralph/work-summary.txt 2>/dev/null || true
   echo "## Iteration ${iteration}" > .ralph/work-summary.txt
   echo "- Added worker-output-${iteration}.txt" >> .ralph/work-summary.txt
 

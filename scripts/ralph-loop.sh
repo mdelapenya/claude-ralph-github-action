@@ -26,6 +26,11 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   state_write_iteration "${iteration}"
   state_log_audit "ITERATION_START" "iteration=${iteration}"
 
+  # Restore writability for files locked in the previous iteration
+  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod u+w "${RALPH_DIR}/review-result.txt"
+  [[ -f "${RALPH_DIR}/work-summary.txt"    ]] && chmod u+w "${RALPH_DIR}/work-summary.txt"
+  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod u+w "${RALPH_DIR}/review-feedback.txt"
+
   echo ""
   echo "=========================================="
   echo "  Iteration ${iteration} of ${MAX_ITERATIONS}"
@@ -44,6 +49,9 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   fi
   state_log_audit "WORKER_END" "iteration=${iteration} status=ok"
 
+  # Lock work-summary so reviewer gets an immutable snapshot
+  [[ -f "${RALPH_DIR}/work-summary.txt" ]] && chmod a-w "${RALPH_DIR}/work-summary.txt"
+
   # Worker is now responsible for ensuring commits are made
   # If no commits, worker should handle it in the next iteration
 
@@ -58,6 +66,19 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
     exit 1
   fi
   state_log_audit "REVIEWER_END" "iteration=${iteration} status=ok"
+
+  # Write checksum and lock reviewer outputs
+  state_write_checksum "${RALPH_DIR}/review-result.txt"
+  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod a-w "${RALPH_DIR}/review-result.txt"
+  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod a-w "${RALPH_DIR}/review-feedback.txt"
+
+  # Integrity gate: abort if review-result.txt was tampered with after the checksum was written
+  if ! state_verify_checksum "${RALPH_DIR}/review-result.txt"; then
+    state_log_audit "INTEGRITY_VIOLATION" "iteration=${iteration} file=review-result.txt"
+    echo "ERROR: review-result.txt checksum mismatch — possible tampering"
+    state_write_final_status "ERROR"
+    exit 1
+  fi
 
   # --- CHECK PUSH ERRORS ---
   push_error="$(state_read_push_error)"
@@ -74,6 +95,7 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
       state_write_review_feedback "${push_feedback}"
     fi
     # Force REVISE so the loop continues regardless of the review decision
+    chmod u+w "${RALPH_DIR}/review-result.txt" 2>/dev/null || true
     state_write_review_result "REVISE"
   fi
 

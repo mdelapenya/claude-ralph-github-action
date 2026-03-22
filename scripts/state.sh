@@ -154,6 +154,47 @@ state_clear_push_error() {
   rm -f "${RALPH_DIR}/push-error.txt"
 }
 
+# Write SHA-256 checksum sidecar for a state file
+# Portable: prefers sha256sum (Linux), falls back to shasum -a 256 (macOS)
+# Args: $1 = file path
+state_write_checksum() {
+  local file="$1"
+  [[ -f "${file}" ]] || return 0
+  local hash
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash="$(sha256sum "${file}" | cut -d' ' -f1)"
+  else
+    hash="$(shasum -a 256 "${file}" | cut -d' ' -f1)"
+  fi
+  printf '%s\n' "${hash}" > "${file}.sha256"
+}
+
+# Verify SHA-256 checksum sidecar. Returns 0 if OK or no sidecar exists (first iteration).
+# Returns 1 and prints error to stderr if tampering is detected.
+# Args: $1 = file path
+state_verify_checksum() {
+  local file="$1"
+  local sidecar="${file}.sha256"
+  [[ -f "${sidecar}" ]] || return 0
+  if [[ ! -f "${file}" ]]; then
+    echo "ERROR: file missing but checksum sidecar exists: ${file}" >&2
+    return 1
+  fi
+  local expected actual
+  expected="$(cat "${sidecar}")"
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "${file}" | cut -d' ' -f1)"
+  else
+    actual="$(shasum -a 256 "${file}" | cut -d' ' -f1)"
+  fi
+  if [[ "${expected}" != "${actual}" ]]; then
+    echo "ERROR: integrity check failed for ${file}" >&2
+    echo "  expected: ${expected}" >&2
+    echo "  actual:   ${actual}" >&2
+    return 1
+  fi
+}
+
 # Append an audit event to .ralph/audit.log (append-only, tab-separated)
 # Args: $1 = phase (LOOP_START, WORKER_START, REVIEWER_END, DECISION, …)
 #        $2 = detail string (e.g. "iteration=1 result=SHIP")

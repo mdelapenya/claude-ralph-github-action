@@ -765,6 +765,66 @@ test_state_write_task_xml_boundaries() {
   echo "PASS: state_write_task XML boundary structure is correct"
 }
 
+test_state_checksum_write_verify() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  echo "SHIP" > .ralph/review-result.txt
+
+  # Write checksum — sidecar should be created
+  state_write_checksum ".ralph/review-result.txt"
+  if [[ ! -f ".ralph/review-result.txt.sha256" ]]; then
+    echo "FAIL: sha256 sidecar should be created"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Verify should pass on unmodified file
+  if ! state_verify_checksum ".ralph/review-result.txt"; then
+    echo "FAIL: checksum verification should pass for unmodified file"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Tamper with the file — verify should fail
+  echo "REVISE" > .ralph/review-result.txt
+  if state_verify_checksum ".ralph/review-result.txt" 2>/dev/null; then
+    echo "FAIL: checksum verification should fail after tampering"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_checksum and state_verify_checksum detect tampering"
+}
+
+test_state_checksum_missing_sidecar() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  echo "SHIP" > .ralph/review-result.txt
+
+  # No sidecar — verify should return 0 (first iteration, no prior checksum)
+  if ! state_verify_checksum ".ralph/review-result.txt"; then
+    echo "FAIL: verify should return 0 when no sidecar exists"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_verify_checksum returns 0 when no sidecar exists"
+}
+
 test_state_log_audit() {
   local tmpdir
   tmpdir="$(mktemp -d)"
@@ -852,6 +912,8 @@ main() {
   test_state_read_push_error_default || failed=$((failed + 1))
   test_state_write_task_xml_boundaries || failed=$((failed + 1))
   test_state_log_audit || failed=$((failed + 1))
+  test_state_checksum_write_verify || failed=$((failed + 1))
+  test_state_checksum_missing_sidecar || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then
