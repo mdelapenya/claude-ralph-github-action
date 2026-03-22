@@ -85,7 +85,7 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
       else
         GH_ERR_MSG="$(cat "${GH_PR_ERR}" 2>/dev/null || true)"
         echo "   gh error: ${GH_ERR_MSG:-<no output>}"
-        echo "   Fix: Ensure the token has pull-requests:read scope for ${GITHUB_REPOSITORY}"
+        echo "   Fix: Ensure the workflow has 'pull-requests: read' permission (or 'repo' scope if using a PAT) for ${GITHUB_REPOSITORY}"
       fi
       rm -f "${GH_PR_ERR}"
       exit 1
