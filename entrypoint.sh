@@ -59,16 +59,17 @@ fi
 # PR comments come through the issue_comment event with .issue.pull_request set.
 # The slash command avoids triggering on every review event and gives the user
 # explicit control over when to re-run the loop.
+readonly DEFAULT_RALPH_REVIEW_CMD="/ralph-review"
 PR_REVIEW_EVENT=false
 PR_NUMBER=""
 PR_BRANCH=""
 TEMP_ISSUE_NUMBER=""
-RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-/ralph-review}"
+RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-${DEFAULT_RALPH_REVIEW_CMD}}"
 # Guard: if the input is explicitly set to "" the :- default above does not fire,
 # which would make every PR comment match the command.
 if [[ -z "${RALPH_REVIEW_CMD}" ]]; then
-  echo "⚠️  Warning: ralph_review_command is empty, defaulting to '/ralph-review'"
-  RALPH_REVIEW_CMD="/ralph-review"
+  echo "⚠️  Warning: ralph_review_command is empty, defaulting to '${DEFAULT_RALPH_REVIEW_CMD}'"
+  RALPH_REVIEW_CMD="${DEFAULT_RALPH_REVIEW_CMD}"
 fi
 RALPH_REVIEW_ARGS=""
 if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
