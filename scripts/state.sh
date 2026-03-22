@@ -15,17 +15,25 @@ state_init() {
 
 # Write the task description from the issue
 # Args: $1 = issue title, $2 = issue body, $3 = issue comments (optional)
-# Uses printf instead of heredocs to avoid injection when content contains delimiter strings
+# Uses printf instead of heredocs to avoid injection when content contains delimiter strings.
+# All user-supplied content is wrapped in <user-input> XML tags so agents can distinguish
+# the task specification from system prompt instructions.
 state_write_task() {
   local title="$1"
   local body="$2"
   local comments="${3:-}"
-  printf '# %s\n\n%s\n' "${title}" "${body}" > "${RALPH_DIR}/task.md"
-
-  # Append comments if provided
-  if [[ -n "${comments}" ]]; then
-    printf '\n---\n\n# Issue Comments\n\n%s\n' "${comments}" >> "${RALPH_DIR}/task.md"
-  fi
+  {
+    printf '<user-input>\n'
+    printf '## Issue Title\n\n'
+    printf '<title>%s</title>\n\n' "${title}"
+    printf '## Issue Body\n\n'
+    printf '<body>\n%s\n</body>\n' "${body}"
+    if [[ -n "${comments}" ]]; then
+      printf '\n## Issue Comments\n\n'
+      printf '<comments>\n%s\n</comments>\n' "${comments}"
+    fi
+    printf '</user-input>\n'
+  } > "${RALPH_DIR}/task.md"
 }
 
 # Write the issue number
