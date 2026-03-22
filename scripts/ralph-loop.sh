@@ -19,10 +19,18 @@ MAX_ITERATIONS="${INPUT_MAX_ITERATIONS:-5}"
 iteration="$(state_read_iteration)"
 
 echo "=== Ralph Loop Starting (iteration: ${iteration}, max: ${MAX_ITERATIONS}) ==="
+state_log_audit "LOOP_START" "max=${MAX_ITERATIONS}"
 
 while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   iteration=$((iteration + 1))
   state_write_iteration "${iteration}"
+  state_log_audit "ITERATION_START" "iteration=${iteration}"
+
+  # Restore writability for files locked in the previous iteration.
+  # Use || true so chmod failures (e.g. ownership mismatch) don't abort the loop.
+  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod u+w "${RALPH_DIR}/review-result.txt"   2>/dev/null || true
+  [[ -f "${RALPH_DIR}/work-summary.txt"    ]] && chmod u+w "${RALPH_DIR}/work-summary.txt"    2>/dev/null || true
+  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod u+w "${RALPH_DIR}/review-feedback.txt" 2>/dev/null || true
 
   echo ""
   echo "=========================================="
@@ -32,12 +40,18 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   # --- WORK PHASE ---
   echo ""
   echo "--- Work Phase ---"
+  state_log_audit "WORKER_START" "iteration=${iteration}"
 
   if ! "${SCRIPT_DIR}/worker.sh"; then
     echo "ERROR: Worker failed on iteration ${iteration}"
+    state_log_audit "WORKER_END" "iteration=${iteration} status=ERROR"
     state_write_final_status "ERROR"
     exit 1
   fi
+  state_log_audit "WORKER_END" "iteration=${iteration} status=ok"
+
+  # Lock work-summary so reviewer gets an immutable snapshot
+  [[ -f "${RALPH_DIR}/work-summary.txt" ]] && chmod a-w "${RALPH_DIR}/work-summary.txt"
 
   # Worker is now responsible for ensuring commits are made
   # If no commits, worker should handle it in the next iteration
@@ -45,8 +59,24 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   # --- REVIEW PHASE ---
   echo ""
   echo "--- Review Phase ---"
+  state_log_audit "REVIEWER_START" "iteration=${iteration}"
   if ! "${SCRIPT_DIR}/reviewer.sh"; then
     echo "ERROR: Reviewer failed on iteration ${iteration}"
+    state_log_audit "REVIEWER_END" "iteration=${iteration} status=ERROR"
+    state_write_final_status "ERROR"
+    exit 1
+  fi
+  state_log_audit "REVIEWER_END" "iteration=${iteration} status=ok"
+
+  # Write checksum and lock reviewer outputs
+  state_write_checksum "${RALPH_DIR}/review-result.txt"
+  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod a-w "${RALPH_DIR}/review-result.txt"
+  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod a-w "${RALPH_DIR}/review-feedback.txt"
+
+  # Integrity gate: abort if review-result.txt was tampered with after the checksum was written
+  if ! state_verify_checksum "${RALPH_DIR}/review-result.txt"; then
+    state_log_audit "INTEGRITY_VIOLATION" "iteration=${iteration} file=review-result.txt"
+    echo "ERROR: review-result.txt checksum mismatch — possible tampering"
     state_write_final_status "ERROR"
     exit 1
   fi
@@ -66,6 +96,7 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
       state_write_review_feedback "${push_feedback}"
     fi
     # Force REVISE so the loop continues regardless of the review decision
+    chmod u+w "${RALPH_DIR}/review-result.txt" 2>/dev/null || true
     state_write_review_result "REVISE"
   fi
 
@@ -73,14 +104,17 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   result="$(state_read_review_result)"
   echo ""
   echo "--- Decision: ${result} ---"
+  state_log_audit "DECISION" "iteration=${iteration} result=${result}"
 
   if [[ "${result}" == "SHIP" ]]; then
     echo "Reviewer approved! Shipping."
+    state_log_audit "LOOP_END" "status=SHIPPED iteration=${iteration}"
     state_write_final_status "SHIPPED"
     exit 0
   fi
 
   echo "Reviewer requested revisions. Continuing to next iteration."
+  state_log_audit "REVISE_CONTINUE" "iteration=${iteration}"
   feedback="$(state_read_review_feedback)"
   if [[ -n "${feedback}" ]]; then
     echo "Feedback preview: ${feedback:0:200}..."
@@ -89,5 +123,6 @@ done
 
 echo ""
 echo "=== Max iterations (${MAX_ITERATIONS}) reached ==="
+state_log_audit "LOOP_END" "status=MAX_ITERATIONS iteration=${iteration}"
 state_write_final_status "MAX_ITERATIONS"
 exit 2

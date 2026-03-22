@@ -15,17 +15,33 @@ state_init() {
 
 # Write the task description from the issue
 # Args: $1 = issue title, $2 = issue body, $3 = issue comments (optional)
-# Uses printf instead of heredocs to avoid injection when content contains delimiter strings
+# Uses printf instead of heredocs to avoid injection when content contains delimiter strings.
+# All user-supplied content is wrapped in <user-input> XML tags so agents can distinguish
+# the task specification from system prompt instructions.
 state_write_task() {
   local title="$1"
   local body="$2"
   local comments="${3:-}"
-  printf '# %s\n\n%s\n' "${title}" "${body}" > "${RALPH_DIR}/task.md"
-
-  # Append comments if provided
-  if [[ -n "${comments}" ]]; then
-    printf '\n---\n\n# Issue Comments\n\n%s\n' "${comments}" >> "${RALPH_DIR}/task.md"
-  fi
+  # Escape the specific closing boundary tags that could let user content break out of its
+  # section. Only the four tags we control are escaped; other HTML/XML is left as-is so
+  # code snippets in issue bodies are not corrupted. Replacing "</" with "&lt;/" prevents
+  # any injected closing tag from being interpreted as a real boundary by the agent.
+  local safe_title safe_body safe_comments
+  safe_title="$(printf '%s' "${title}"    | sed 's|</|\&lt;/|g')"
+  safe_body="$(printf '%s' "${body}"      | sed 's|</|\&lt;/|g')"
+  safe_comments="$(printf '%s' "${comments}" | sed 's|</|\&lt;/|g')"
+  {
+    printf '<user-input>\n'
+    printf '## Issue Title\n\n'
+    printf '<title>%s</title>\n\n' "${safe_title}"
+    printf '## Issue Body\n\n'
+    printf '<body>\n%s\n</body>\n' "${safe_body}"
+    if [[ -n "${comments}" ]]; then
+      printf '\n## Issue Comments\n\n'
+      printf '<comments>\n%s\n</comments>\n' "${safe_comments}"
+    fi
+    printf '</user-input>\n'
+  } > "${RALPH_DIR}/task.md"
 }
 
 # Write the issue number
@@ -144,4 +160,58 @@ state_read_push_error() {
 # Clear the push error file
 state_clear_push_error() {
   rm -f "${RALPH_DIR}/push-error.txt"
+}
+
+# Write SHA-256 checksum sidecar for a state file
+# Portable: prefers sha256sum (Linux), falls back to shasum -a 256 (macOS)
+# Args: $1 = file path
+state_write_checksum() {
+  local file="$1"
+  [[ -f "${file}" ]] || return 0
+  local hash
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash="$(sha256sum "${file}" | cut -d' ' -f1)"
+  else
+    hash="$(shasum -a 256 "${file}" | cut -d' ' -f1)"
+  fi
+  printf '%s\n' "${hash}" > "${file}.sha256"
+}
+
+# Verify SHA-256 checksum sidecar. Returns 0 if OK or no sidecar exists (first iteration).
+# Returns 1 and prints error to stderr if tampering is detected.
+# Args: $1 = file path
+state_verify_checksum() {
+  local file="$1"
+  local sidecar="${file}.sha256"
+  [[ -f "${sidecar}" ]] || return 0
+  if [[ ! -f "${file}" ]]; then
+    echo "ERROR: file missing but checksum sidecar exists: ${file}" >&2
+    return 1
+  fi
+  local expected actual
+  expected="$(cat "${sidecar}")"
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "${file}" | cut -d' ' -f1)"
+  else
+    actual="$(shasum -a 256 "${file}" | cut -d' ' -f1)"
+  fi
+  if [[ "${expected}" != "${actual}" ]]; then
+    echo "ERROR: integrity check failed for ${file}" >&2
+    echo "  expected: ${expected}" >&2
+    echo "  actual:   ${actual}" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Append an audit event to .ralph/audit.log (append-only, tab-separated)
+# Args: $1 = phase (LOOP_START, WORKER_START, REVIEWER_END, DECISION, …)
+#        $2 = detail string (e.g. "iteration=1 result=SHIP")
+# Uses printf %s to prevent format-string injection. Never truncates the file (>> only).
+state_log_audit() {
+  local phase="$1"
+  local detail="${2:-}"
+  local ts
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  printf '%s\t%s\t%s\n' "${ts}" "${phase}" "${detail}" >> "${RALPH_DIR}/audit.log"
 }

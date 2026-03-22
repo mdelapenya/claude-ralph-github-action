@@ -59,11 +59,18 @@ fi
 # PR comments come through the issue_comment event with .issue.pull_request set.
 # The slash command avoids triggering on every review event and gives the user
 # explicit control over when to re-run the loop.
+readonly DEFAULT_RALPH_REVIEW_CMD="/ralph-review"
 PR_REVIEW_EVENT=false
 PR_NUMBER=""
 PR_BRANCH=""
 TEMP_ISSUE_NUMBER=""
-RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-/ralph-review}"
+RALPH_REVIEW_CMD="${INPUT_RALPH_REVIEW_COMMAND:-${DEFAULT_RALPH_REVIEW_CMD}}"
+# Guard: if the input is explicitly set to "" the :- default above does not fire,
+# which would make every PR comment match the command.
+if [[ -z "${RALPH_REVIEW_CMD}" ]]; then
+  echo "⚠️  Warning: ralph_review_command is empty, defaulting to '${DEFAULT_RALPH_REVIEW_CMD}'"
+  RALPH_REVIEW_CMD="${DEFAULT_RALPH_REVIEW_CMD}"
+fi
 RALPH_REVIEW_ARGS=""
 if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
   COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
@@ -84,7 +91,7 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
         echo "   Fix: GH_TOKEN is not set — ensure the github_token input is provided"
       else
         GH_ERR_MSG="$(cat "${GH_PR_ERR}" 2>/dev/null || true)"
-        echo "   gh error: ${GH_ERR_MSG:-<no output>}"
+        echo "   gh error: ${GH_ERR_MSG:0:200}"
         echo "   Fix: Ensure the workflow has 'pull-requests: read' permission (or 'repo' scope if using a PAT) for ${GITHUB_REPOSITORY}"
       fi
       rm -f "${GH_PR_ERR}"
@@ -96,6 +103,9 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
       RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD} "}"
     elif [[ "${COMMENT_BODY}" == "${RALPH_REVIEW_CMD}"$'\n'* ]]; then
       RALPH_REVIEW_ARGS="${COMMENT_BODY#"${RALPH_REVIEW_CMD}"$'\n'}"
+    fi
+    if [[ -n "${RALPH_REVIEW_ARGS}" ]]; then
+      echo "📝 Ralph review args: ${RALPH_REVIEW_ARGS}"
     fi
     # Extract issue number from the ralph branch name (pattern: ralph/issue-NNN)
     if [[ "${PR_BRANCH}" =~ ralph/issue-([0-9]+) ]]; then
@@ -225,7 +235,7 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 # --- Set up working branch ---
 WORKSPACE="${GITHUB_WORKSPACE}"
-cd "${WORKSPACE}"
+cd "${WORKSPACE}" || { echo "❌ Error: cannot cd to GITHUB_WORKSPACE: ${WORKSPACE}"; exit 1; }
 
 # Simplified: agents will handle branch context
 git fetch origin
@@ -244,12 +254,38 @@ state_write_issue_number "${ISSUE_NUMBER}"
 state_write_event_info "${EVENT_ACTION}" "${EVENT_COMMENT_ID}"
 state_write_iteration "0"
 
-# --- Write PR info for the reviewer agent (validation delegated to reviewer) ---
+# --- Write run provenance for agent commit trailers ---
+{
+  echo "run_id=${GITHUB_RUN_ID:-unknown}"
+  echo "run_url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID:-unknown}"
+  echo "base_sha=${GITHUB_SHA:-unknown}"
+  echo "repository=${GITHUB_REPOSITORY:-unknown}"
+  echo "workflow=${GITHUB_WORKFLOW:-unknown}"
+  echo "worker_model=${INPUT_WORKER_MODEL:-sonnet}"
+  echo "reviewer_model=${INPUT_REVIEWER_MODEL:-sonnet}"
+  echo "commit_author_name=${INPUT_COMMIT_AUTHOR_NAME:-claude-ralph[bot]}"
+  echo "commit_author_email=${INPUT_COMMIT_AUTHOR_EMAIL:-claude-ralph[bot]@users.noreply.github.com}"
+} > "${RALPH_DIR}/run-info.txt"
+
+# --- Validate merge_strategy before writing pr-info ---
+merge_strategy="${INPUT_MERGE_STRATEGY:-pr}"
+if [[ "${merge_strategy}" != "pr" && "${merge_strategy}" != "squash-merge" ]]; then
+  echo "⚠️  Warning: invalid merge_strategy '${merge_strategy}', defaulting to 'pr'"
+  merge_strategy="pr"
+fi
+if [[ "${merge_strategy}" == "squash-merge" ]]; then
+  echo "⚠️  WARNING: merge_strategy=squash-merge is configured."
+  echo "   The reviewer agent will push directly to the default branch on SHIP,"
+  echo "   bypassing branch protection rules and PR review requirements."
+  echo "   Ensure this is intentional for this repository."
+fi
+
+# --- Write PR info for the reviewer agent ---
 {
   echo "repo=${GITHUB_REPOSITORY}"
   echo "branch=${BRANCH_NAME}"
   echo "issue_title=${ISSUE_TITLE}"
-  echo "merge_strategy=${INPUT_MERGE_STRATEGY:-pr}"
+  echo "merge_strategy=${merge_strategy}"
   echo "default_branch=${INPUT_DEFAULT_BRANCH:-${BASE_BRANCH}}"
   # Check if a PR already exists for this branch
   existing_pr_number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH_NAME}" --json number --jq '.[0].number' 2>/dev/null || echo "")"
@@ -300,6 +336,32 @@ elif [[ -f ".ralph/pr-url.txt" ]]; then
   if [[ -n "${pr_url_or_sha}" ]]; then
     echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
+fi
+
+# --- Write GitHub Step Summary ---
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  {
+    echo "## Claude Ralph Run Summary"
+    echo ""
+    echo "| Field | Value |"
+    echo "|-------|-------|"
+    echo "| Status | \`${final_status}\` |"
+    echo "| Iterations | ${iteration} |"
+    echo "| Issue | [#${ISSUE_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}) |"
+    echo "| Worker Model | \`${INPUT_WORKER_MODEL:-sonnet}\` |"
+    echo "| Reviewer Model | \`${INPUT_REVIEWER_MODEL:-sonnet}\` |"
+    echo "| Run ID | [\`${GITHUB_RUN_ID:-unknown}\`](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID:-}) |"
+    if [[ -n "${pr_url_or_sha}" ]]; then
+      echo "| Result | ${effective_strategy}: ${pr_url_or_sha} |"
+    fi
+    if [[ -f ".ralph/audit.log" ]]; then
+      echo ""
+      echo "### Phase Audit Log"
+      echo '```'
+      cat ".ralph/audit.log"
+      echo '```'
+    fi
+  } >> "${GITHUB_STEP_SUMMARY}"
 fi
 
 # --- Set outputs ---

@@ -89,7 +89,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'Dockerfile'
+  image: 'docker://mdelapenya/claude-ralph-github-action:v1'
   env:
     ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
     GH_TOKEN: ${{ inputs.github_token }}

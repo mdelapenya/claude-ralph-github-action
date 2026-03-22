@@ -66,6 +66,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+      # To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+      # Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
       - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -157,6 +160,9 @@ When the reviewer approves (SHIP), Ralph squashes all commits into a single comm
 Example workflow configuration for squash-merge:
 
 ```yaml
+# Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+# To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+# Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
 - uses: mdelapenya/claude-ralph-github-action@v1
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -174,6 +180,9 @@ You can configure the personality and tone of both the worker and reviewer agent
 **Example workflow configuration:**
 
 ```yaml
+# Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+# To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+# Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
 - uses: mdelapenya/claude-ralph-github-action@v1
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -209,6 +218,9 @@ If you need Ralph to edit workflow files, use a Personal Access Token (PAT) with
 3. Pass it to the action:
 
 ```yaml
+# Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+# To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+# Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
 - uses: mdelapenya/claude-ralph-github-action@v1
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -245,6 +257,9 @@ if: >-
   (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request && (github.event.comment.body == '/ralph-review' || startsWith(github.event.comment.body, '/ralph-review ')) && github.event.comment.user.type != 'Bot')
 
 # Action step: pass as input so entrypoint.sh knows the command
+      # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+      # To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+      # Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
       - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -331,7 +346,8 @@ To run tests in your CI workflow, copy the job definitions from `test/ci-example
 # Requires Docker and an Anthropic API key
 ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 
-# With verbose Claude CLI output
+# With verbose Claude CLI output (⚠️ security: logs include full tool call payloads and file contents;
+# do not enable in workflows where runner logs are publicly visible)
 RALPH_VERBOSE=true ANTHROPIC_API_KEY=sk-... ./test/run-local.sh
 
 # Override defaults
