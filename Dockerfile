@@ -1,4 +1,5 @@
-FROM node:22-slim
+# Pinned 2026-03-22 — update deliberately: https://hub.docker.com/_/node
+FROM node:22-slim@sha256:4f77a690f2f8946ab16fe1e791a3ac0667ae1c3575c3e4d0d4589e9ed5bfaf3d
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -12,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get update && apt-get install -y --no-install-recommends gh \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code
+# Pinned 2026-03-22 — bump deliberately after testing
+RUN npm install -g @anthropic-ai/claude-code@2.1.81
 
 COPY entrypoint.sh /entrypoint.sh
 COPY scripts/ /scripts/
