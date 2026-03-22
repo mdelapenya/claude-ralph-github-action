@@ -91,8 +91,11 @@ elif [[ "${prompt}" == *"Work on the task"* ]] || [[ "${prompt}" == *"You are on
   if [[ "${iteration}" -eq 1 ]]; then
     _react_issue_number=""
     _react_comment_id=""
-    _react_repo="${GITHUB_REPOSITORY:-}"
+    _react_repo=""
 
+    if [[ -f .ralph/pr-info.txt ]]; then
+      _react_repo="$(grep '^repo=' .ralph/pr-info.txt | cut -d= -f2- || true)"
+    fi
     if [[ -f .ralph/issue-number.txt ]]; then
       _react_issue_number="$(cat .ralph/issue-number.txt)"
     fi

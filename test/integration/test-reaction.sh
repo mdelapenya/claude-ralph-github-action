@@ -39,6 +39,10 @@ test_reaction_on_issue_labeled() {
   state_write_issue_number "42"
   state_write_event_info "labeled" ""
   state_write_iteration "0"
+  # Write pr-info.txt as entrypoint.sh would
+  echo "repo=test-owner/test-repo" > .ralph/pr-info.txt
+  echo "branch=ralph/issue-42" >> .ralph/pr-info.txt
+  echo "default_branch=main" >> .ralph/pr-info.txt
 
   # Create the branch
   git checkout -b ralph/issue-42 > /dev/null 2>&1
@@ -107,6 +111,10 @@ test_reaction_on_comment() {
   state_write_issue_number "42"
   state_write_event_info "created" "98765"
   state_write_iteration "0"
+  # Write pr-info.txt as entrypoint.sh would
+  echo "repo=test-owner/test-repo" > .ralph/pr-info.txt
+  echo "branch=ralph/issue-42" >> .ralph/pr-info.txt
+  echo "default_branch=main" >> .ralph/pr-info.txt
 
   # Create the branch
   git checkout -b ralph/issue-42 > /dev/null 2>&1
@@ -175,6 +183,10 @@ test_no_reaction_on_subsequent_iterations() {
   state_write_issue_number "42"
   state_write_event_info "labeled" ""
   state_write_iteration "0"
+  # Write pr-info.txt as entrypoint.sh would
+  echo "repo=test-owner/test-repo" > .ralph/pr-info.txt
+  echo "branch=ralph/issue-42" >> .ralph/pr-info.txt
+  echo "default_branch=main" >> .ralph/pr-info.txt
 
   # Create the branch
   git checkout -b ralph/issue-42 > /dev/null 2>&1
