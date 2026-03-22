@@ -204,8 +204,10 @@ echo "🌿 Branch: ${BRANCH_NAME}"
 echo "🏠 Base: ${BASE_BRANCH}"
 
 # --- Configure git ---
-git config --global user.name "claude-ralph[bot]"
-git config --global user.email "claude-ralph[bot]@users.noreply.github.com"
+GIT_AUTHOR_NAME="${INPUT_COMMIT_AUTHOR_NAME:-claude-ralph[bot]}"
+GIT_AUTHOR_EMAIL="${INPUT_COMMIT_AUTHOR_EMAIL:-claude-ralph[bot]@users.noreply.github.com}"
+git config --global user.name "${GIT_AUTHOR_NAME}"
+git config --global user.email "${GIT_AUTHOR_EMAIL}"
 # Docker runs as a different user than the checkout owner; mark workspace as safe
 git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
