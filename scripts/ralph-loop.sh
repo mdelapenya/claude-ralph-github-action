@@ -51,6 +51,24 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
     exit 1
   fi
 
+  # --- CHECK PUSH ERRORS ---
+  push_error="$(state_read_push_error)"
+  if [[ -n "${push_error}" ]]; then
+    echo ""
+    echo "--- Push Error Detected ---"
+    echo "Push error: ${push_error:0:200}..."
+    # Append push error to review feedback so the worker knows about it
+    existing_feedback="$(state_read_review_feedback)"
+    push_feedback="PUSH ERROR: The branch could not be pushed to the remote. ${push_error}"
+    if [[ -n "${existing_feedback}" ]]; then
+      state_write_review_feedback "${existing_feedback}"$'\n\n'"${push_feedback}"
+    else
+      state_write_review_feedback "${push_feedback}"
+    fi
+    # Force REVISE so the loop continues regardless of the review decision
+    state_write_review_result "REVISE"
+  fi
+
   # --- DECIDE ---
   result="$(state_read_review_result)"
   echo ""
