@@ -30,7 +30,10 @@ jobs:
             fi
           done
 
+      # Login only on push to main: fork PRs cannot access secrets, and node:22-slim is
+      # a public image so no auth is needed to build on PRs.
       - name: Log in to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USER }}

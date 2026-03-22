@@ -260,10 +260,7 @@ if: >-
       # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
       # To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
       # Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
-      # Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
-# To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
-# Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
-- uses: mdelapenya/claude-ralph-github-action@v1
+      - uses: mdelapenya/claude-ralph-github-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           ralph_review_command: '/ralph-review'

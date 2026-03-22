@@ -22,15 +22,23 @@ state_write_task() {
   local title="$1"
   local body="$2"
   local comments="${3:-}"
+  # Escape the specific closing boundary tags that could let user content break out of its
+  # section. Only the four tags we control are escaped; other HTML/XML is left as-is so
+  # code snippets in issue bodies are not corrupted. Replacing "</" with "&lt;/" prevents
+  # any injected closing tag from being interpreted as a real boundary by the agent.
+  local safe_title safe_body safe_comments
+  safe_title="$(printf '%s' "${title}"    | sed 's|</|\&lt;/|g')"
+  safe_body="$(printf '%s' "${body}"      | sed 's|</|\&lt;/|g')"
+  safe_comments="$(printf '%s' "${comments}" | sed 's|</|\&lt;/|g')"
   {
     printf '<user-input>\n'
     printf '## Issue Title\n\n'
-    printf '<title>%s</title>\n\n' "${title}"
+    printf '<title>%s</title>\n\n' "${safe_title}"
     printf '## Issue Body\n\n'
-    printf '<body>\n%s\n</body>\n' "${body}"
+    printf '<body>\n%s\n</body>\n' "${safe_body}"
     if [[ -n "${comments}" ]]; then
       printf '\n## Issue Comments\n\n'
-      printf '<comments>\n%s\n</comments>\n' "${comments}"
+      printf '<comments>\n%s\n</comments>\n' "${safe_comments}"
     fi
     printf '</user-input>\n'
   } > "${RALPH_DIR}/task.md"
@@ -193,6 +201,7 @@ state_verify_checksum() {
     echo "  actual:   ${actual}" >&2
     return 1
   fi
+  return 0
 }
 
 # Append an audit event to .ralph/audit.log (append-only, tab-separated)

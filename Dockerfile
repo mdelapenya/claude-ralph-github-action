@@ -1,8 +1,6 @@
-# NOTE: dhi.io/node:22 (Docker Hardened Image) is distroless — it has no /bin/sh or apt-get,
-# so it cannot be used as a build environment. DHI images are designed as final stages in
-# multi-stage builds. Our Dockerfile installs git, jq, and gh via apt-get, which requires
-# a Debian base. Using node:22-slim pinned by digest is the equivalent supply-chain control
-# achievable without a multi-stage rewrite.
+# node:22-slim is the official public Node.js image on Docker Hub — no credentials required
+# to pull in CI or by end users. Pinned by digest for supply-chain integrity: any change to
+# the upstream image requires a deliberate update here.
 # Pinned 2026-03-22 — update deliberately: https://hub.docker.com/_/node
 FROM node:22-slim@sha256:4f77a690f2f8946ab16fe1e791a3ac0667ae1c3575c3e4d0d4589e9ed5bfaf3d
 

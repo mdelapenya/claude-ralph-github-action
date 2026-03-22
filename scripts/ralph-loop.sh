@@ -26,10 +26,11 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   state_write_iteration "${iteration}"
   state_log_audit "ITERATION_START" "iteration=${iteration}"
 
-  # Restore writability for files locked in the previous iteration
-  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod u+w "${RALPH_DIR}/review-result.txt"
-  [[ -f "${RALPH_DIR}/work-summary.txt"    ]] && chmod u+w "${RALPH_DIR}/work-summary.txt"
-  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod u+w "${RALPH_DIR}/review-feedback.txt"
+  # Restore writability for files locked in the previous iteration.
+  # Use || true so chmod failures (e.g. ownership mismatch) don't abort the loop.
+  [[ -f "${RALPH_DIR}/review-result.txt"   ]] && chmod u+w "${RALPH_DIR}/review-result.txt"   2>/dev/null || true
+  [[ -f "${RALPH_DIR}/work-summary.txt"    ]] && chmod u+w "${RALPH_DIR}/work-summary.txt"    2>/dev/null || true
+  [[ -f "${RALPH_DIR}/review-feedback.txt" ]] && chmod u+w "${RALPH_DIR}/review-feedback.txt" 2>/dev/null || true
 
   echo ""
   echo "=========================================="
