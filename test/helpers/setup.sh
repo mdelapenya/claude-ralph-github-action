@@ -191,31 +191,34 @@ create_ralph_review_pr_review_event_json() {
   local review_body="${4:-/ralph-review}"
   local review_state="${5:-commented}"
 
-  cat > "${tmpdir}/ralph-review-event.json" <<EOF
-{
-  "action": "submitted",
-  "review": {
-    "id": 2001,
-    "user": {
-      "login": "reviewer",
-      "type": "User"
-    },
-    "body": "${review_body}",
-    "state": "${review_state}"
-  },
-  "pull_request": {
-    "number": ${pr_number},
-    "head": {
-      "ref": "${branch}"
-    },
-    "html_url": "https://github.com/test-owner/test-repo/pull/${pr_number}"
-  },
-  "repository": {
-    "full_name": "test-owner/test-repo",
-    "default_branch": "main"
-  }
-}
-EOF
+  jq -n \
+    --arg review_body "$review_body" \
+    --arg review_state "$review_state" \
+    --arg pr_number "$pr_number" \
+    --arg branch "$branch" \
+    '{
+      action: "submitted",
+      review: {
+        id: 2001,
+        user: {
+          login: "reviewer",
+          type: "User"
+        },
+        body: $review_body,
+        state: $review_state
+      },
+      pull_request: {
+        number: ($pr_number | tonumber),
+        head: {
+          ref: $branch
+        },
+        html_url: ("https://github.com/test-owner/test-repo/pull/" + $pr_number)
+      },
+      repository: {
+        full_name: "test-owner/test-repo",
+        default_branch: "main"
+      }
+    }' > "${tmpdir}/ralph-review-event.json"
 }
 
 export -f create_test_workspace
