@@ -7,7 +7,11 @@ When you label an issue, Ralph:
 2. Runs a **worker** agent that writes code to address the issue
 3. Runs a **reviewer** agent that evaluates the changes
 4. If the reviewer says **REVISE**, loops back to step 2 with feedback
-5. If the reviewer says **SHIP**, pushes the branch and opens a PR
+5. If the reviewer says **SHIP** and `security_gate_enabled` is `true` (default):
+   - Runs a **security gate** agent that audits the diff for vulnerabilities
+   - If the gate says **FAIL**, loops back to step 2 with security findings as feedback
+   - If the gate says **PASS**, pushes the branch and opens a PR
+6. If `security_gate_enabled` is `false`, ships immediately after the reviewer approves
 
 ![Ralph Loop](https://i.giphy.com/3wr2cnwlghNomDeN9W.webp)
 
@@ -99,6 +103,11 @@ jobs:
 | `commit_author_name` | No | `claude-ralph[bot]` | Git author name for commits |
 | `commit_author_email` | No | `claude-ralph[bot]@users.noreply.github.com` | Git author email for commits |
 | `ralph_review_command` | No | `/ralph-review` | Slash command to trigger a re-review run on a Ralph-created PR (e.g., `/ralph-review focus on tests`) |
+| `security_gate_enabled` | No | `true` | Enable the security gate. Set to `false` to skip the security audit before shipping (not recommended for production) |
+| `security_gate_model` | No | `sonnet` | Claude model for the security gate phase |
+| `max_turns_security_gate` | No | `50` | Maximum agentic turns per security gate invocation |
+| `security_gate_tools` | No | `Bash,Read,Write,Glob,Grep` | Comma-separated tools the security gate can use |
+| `security_gate_tone` | No | — | Personality/tone for the security gate agent (e.g., `"Agent Smith"`, `"HAL 9000"`) |
 
 ## Outputs
 
@@ -120,7 +129,24 @@ Ralph creates a `.ralph/` directory in the working tree (never committed to the 
 - **`pr-title.txt`** — PR title in conventional commits format (set by reviewer)
 - **`iteration.txt`** — Current iteration number
 
-The worker agent merges the base branch (resolving any conflicts), implements the task, and commits changes directly. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE. If the worker makes no commits in an iteration, the loop continues to the next iteration with feedback instead of aborting.
+The worker agent merges the base branch (resolving any conflicts), implements the task, and commits changes directly. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE. When the reviewer decides SHIP, the security gate performs an independent read-only audit of the branch diff before the loop exits. If the worker makes no commits in an iteration, the loop continues to the next iteration with feedback instead of aborting.
+
+### Security Gate
+
+The security gate is a separate Claude agent that runs after every SHIP decision. It audits the branch diff for:
+
+- **Secrets**: hardcoded API keys, tokens, passwords (including in git history)
+- **Injection**: command injection, SQL injection, path traversal, XSS, SSRF
+- **Auth**: missing authentication, broken access control, insecure session management
+- **Cryptography**: broken algorithms (MD5, SHA-1, DES), disabled TLS verification
+- **Shell safety**: unquoted variables, `eval` with external input, insecure temp files
+- **Dependencies**: unpinned versions, known-vulnerable packages
+- **Information disclosure**: stack traces, debug endpoints, sensitive data in logs
+- **Privilege**: world-writable files, unnecessary root operations
+
+Any finding of **MEDIUM severity or higher** writes `FAIL` and forces another worker iteration with the findings as feedback. The gate defaults to `FAIL` if it crashes or produces no output (fail-safe). It also detects prompt injection attempts in any file it reads and treats them as CRITICAL findings.
+
+Disable with `security_gate_enabled: false`. See [SECURITY.md](SECURITY.md) for the full threat model.
 
 ### PR titles
 
@@ -299,6 +325,31 @@ If an issue requests "Add user authentication with login, registration, and pass
 
 Each subtask is then processed independently and can be merged separately, allowing for faster parallel execution and clearer code reviews.
 
+## Supply Chain Security
+
+> **TL;DR:** Always pin to a full commit SHA. Never use `@main`, `@latest`, or a mutable tag like `@v1` in production workflows.
+
+This action runs with access to your `ANTHROPIC_API_KEY` and `github_token`. A compromised maintainer account or Docker Hub credential could replace the code or image under a mutable reference without any visible change to your workflow file.
+
+**Pin to an immutable SHA:**
+
+```yaml
+# UNSAFE — tag can be silently moved to a different commit
+- uses: mdelapenya/claude-ralph-github-action@v1
+
+# SAFE — SHA cannot be retroactively changed
+- uses: mdelapenya/claude-ralph-github-action@f8a8ef2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f  # v1.2.3
+```
+
+Get the SHA for the latest release:
+```bash
+gh release view --repo mdelapenya/claude-ralph-github-action --json tagName,targetCommitish
+```
+
+**Use Dependabot** to get automatic SHA-update PRs when a new release is published — add `package-ecosystem: "github-actions"` to your `.github/dependabot.yml`.
+
+See [SECURITY.md](SECURITY.md) for the full threat model, Dependabot setup, and recommended permission scoping.
+
 ## Testing
 
 Ralph includes unit and integration tests that validate the scripts without calling the Claude API.
@@ -317,22 +368,26 @@ shellcheck --severity=warning entrypoint.sh scripts/*.sh test/**/*.sh test/*.sh
 
 | Category | Files | What it tests |
 |----------|-------|---------------|
-| **Unit tests** | `test/unit/test-state.sh` | `state.sh` read/write helpers |
+| **Unit tests** | `test/unit/test-state.sh` | `state.sh` read/write helpers, including security result/feedback helpers |
 | | `test/unit/test-output-format.sh` | Action output format validation (`pr_url`, `iterations`, `final_status`) |
-| **Integration tests** | `test/integration/test-shipped-flow.sh` | Full SHIP path: worker commits, reviewer approves, PR URL written |
+| **Integration tests** | `test/integration/test-shipped-flow.sh` | Full SHIP path: worker commits, reviewer approves, gate passes, PR URL written |
 | | `test/integration/test-max-iterations.sh` | REVISE loop exhausts `INPUT_MAX_ITERATIONS`, exits with code 2 |
 | | `test/integration/test-error-handling.sh` | Worker failure triggers ERROR exit with code 1 |
 | | `test/integration/test-squash-merge.sh` | Squash-merge strategy writes `merge-commit.txt` instead of PR URL |
 | | `test/integration/test-pr-review-comment.sh` | `/ralph-review` slash command runs loop with PR review context in `task.md` |
+| | `test/integration/test-security-gate-pass.sh` | Reviewer SHIPs, security gate PASSes → SHIPPED; audit log records gate phases |
+| | `test/integration/test-security-gate-fail-then-pass.sh` | Gate FAILs on first SHIP, forces REVISE with findings; gate PASSes on iteration 2 → SHIPPED |
+| | `test/integration/test-security-gate-disabled.sh` | `security_gate_enabled: false` skips gate, ships normally, no `security-result.txt` written |
 
 ### How Integration Tests Work
 
 Integration tests exercise the real `ralph-loop.sh` -> `worker.sh` -> `reviewer.sh` pipeline with mock binaries:
 
-- **Mock `claude`** (`test/helpers/mocks.sh`): A standalone script placed on `PATH` that inspects the prompt to determine worker vs reviewer mode. The worker mock creates a file and commits it. The reviewer mock writes `SHIP` or `REVISE` to state files. Behavior is configurable via env vars:
+- **Mock `claude`** (`test/helpers/mocks.sh`): A standalone script placed on `PATH` that inspects the prompt to determine worker vs reviewer vs security gate mode. The worker mock creates a file and commits it. The reviewer mock writes `SHIP` or `REVISE` to state files. The security gate mock writes `PASS` or `FAIL`. Behavior is configurable via env vars:
   - `MOCK_REVIEW_DECISION` — `SHIP` (default) or `REVISE`
   - `MOCK_WORKER_FAIL` — Set to `true` to simulate worker failure
   - `MOCK_MERGE_STRATEGY` — Set to `squash-merge` for squash-merge tests
+  - `MOCK_SECURITY_GATE_DECISION` — `PASS` (default), `FAIL`, or `FAIL_ONCE` (fails the first invocation, passes subsequent ones)
 - **Mock `gh`**: Returns mock PR URLs and no-ops for issue comments
 - **Isolated workspaces** (`test/helpers/setup.sh`): Each test runs in a temp directory with its own git repo and bare remote, so `git push` works without network access
 

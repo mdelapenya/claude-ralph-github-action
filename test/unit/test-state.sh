@@ -916,6 +916,158 @@ test_state_log_audit() {
   echo "PASS: state_log_audit creates append-only audit log with correct format"
 }
 
+test_state_write_read_security_result_pass() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_security_result "PASS"
+  local result
+  result="$(state_read_security_result)"
+
+  if [[ "${result}" != "PASS" ]]; then
+    echo "FAIL: expected PASS, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_security_result / state_read_security_result work for PASS"
+}
+
+test_state_write_read_security_result_fail() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  state_write_security_result "FAIL"
+  local result
+  result="$(state_read_security_result)"
+
+  if [[ "${result}" != "FAIL" ]]; then
+    echo "FAIL: expected FAIL, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_security_result / state_read_security_result work for FAIL"
+}
+
+test_state_read_security_result_default() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # No file written — should default to FAIL (fail-safe)
+  local result
+  result="$(state_read_security_result)"
+
+  if [[ "${result}" != "FAIL" ]]; then
+    echo "FAIL: expected fail-safe default FAIL, got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_read_security_result defaults to FAIL when file is missing (fail-safe)"
+}
+
+test_state_read_security_result_normalization() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # Lowercase and mixed-case values should normalize correctly
+  echo "pass" > .ralph/security-result.txt
+  local result
+  result="$(state_read_security_result)"
+  if [[ "${result}" != "PASS" ]]; then
+    echo "FAIL: expected PASS from 'pass', got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  echo "fail" > .ralph/security-result.txt
+  result="$(state_read_security_result)"
+  if [[ "${result}" != "FAIL" ]]; then
+    echo "FAIL: expected FAIL from 'fail', got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  # Ambiguous value should default to FAIL
+  echo "UNKNOWN" > .ralph/security-result.txt
+  result="$(state_read_security_result)"
+  if [[ "${result}" != "FAIL" ]]; then
+    echo "FAIL: expected FAIL from ambiguous 'UNKNOWN', got=${result}"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_read_security_result normalizes values correctly"
+}
+
+test_state_write_read_security_feedback() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  local findings="Security gate blocked ship: 1 finding(s)."$'\n'"1. [HIGH] Command injection in foo.sh:10"
+  state_write_security_feedback "${findings}"
+  local result
+  result="$(state_read_security_feedback)"
+
+  if [[ "${result}" != "${findings}" ]]; then
+    echo "FAIL: security feedback round-trip mismatch"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_write_security_feedback / state_read_security_feedback work correctly"
+}
+
+test_state_read_security_feedback_default() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  cd "${tmpdir}"
+  state_init
+
+  # No file — should return empty string
+  local result
+  result="$(state_read_security_feedback)"
+
+  if [[ -n "${result}" ]]; then
+    echo "FAIL: expected empty feedback, got='${result}'"
+    cd - > /dev/null
+    rm -rf "${tmpdir}"
+    return 1
+  fi
+
+  cd - > /dev/null
+  rm -rf "${tmpdir}"
+  echo "PASS: state_read_security_feedback returns empty string when file is missing"
+}
+
 # Run all tests
 main() {
   local failed=0
@@ -942,6 +1094,12 @@ main() {
   test_state_log_audit || failed=$((failed + 1))
   test_state_checksum_write_verify || failed=$((failed + 1))
   test_state_checksum_missing_sidecar || failed=$((failed + 1))
+  test_state_write_read_security_result_pass || failed=$((failed + 1))
+  test_state_write_read_security_result_fail || failed=$((failed + 1))
+  test_state_read_security_result_default || failed=$((failed + 1))
+  test_state_read_security_result_normalization || failed=$((failed + 1))
+  test_state_write_read_security_feedback || failed=$((failed + 1))
+  test_state_read_security_feedback_default || failed=$((failed + 1))
 
   echo ""
   if [[ ${failed} -eq 0 ]]; then

@@ -5,9 +5,10 @@
 # and prepends it to PATH so real scripts pick them up.
 #
 # Configurable via env vars:
-#   MOCK_REVIEW_DECISION  - "SHIP" (default) or "REVISE"
-#   MOCK_WORKER_FAIL      - if "true", mock claude exits 1 for worker calls
-#   MOCK_MERGE_STRATEGY   - if "squash-merge", reviewer writes merge-commit.txt
+#   MOCK_REVIEW_DECISION          - "SHIP" (default) or "REVISE"
+#   MOCK_WORKER_FAIL              - if "true", mock claude exits 1 for worker calls
+#   MOCK_MERGE_STRATEGY           - if "squash-merge", reviewer writes merge-commit.txt
+#   MOCK_SECURITY_GATE_DECISION   - "PASS" (default), "FAIL", or "FAIL_ONCE" (fails first call, passes subsequent)
 
 set -euo pipefail
 
@@ -75,6 +76,36 @@ if [[ "${prompt}" == *"You are the reviewer"* ]] || [[ "${prompt}" == *"Review t
     chmod u+w .ralph/review-feedback.txt 2>/dev/null || true
     echo "Please fix the issues found in the code." > .ralph/review-feedback.txt
     echo "Mock reviewer: REVISE"
+  fi
+
+elif [[ "${prompt}" == *"You are the security gate"* ]]; then
+  # --- Security gate mode ---
+  gate_decision="${MOCK_SECURITY_GATE_DECISION:-PASS}"
+
+  # FAIL_ONCE: fail on first invocation, pass on subsequent ones
+  if [[ "${gate_decision}" == "FAIL_ONCE" ]]; then
+    call_count_file=".ralph/security-gate-call-count.txt"
+    call_count=0
+    if [[ -f "${call_count_file}" ]]; then
+      call_count="$(cat "${call_count_file}")"
+    fi
+    call_count=$((call_count + 1))
+    echo "${call_count}" > "${call_count_file}"
+    if [[ "${call_count}" -eq 1 ]]; then
+      gate_decision="FAIL"
+    else
+      gate_decision="PASS"
+    fi
+  fi
+
+  echo "${gate_decision}" > .ralph/security-result.txt
+
+  if [[ "${gate_decision}" == "FAIL" ]]; then
+    echo "Security gate blocked ship: 1 finding(s) of MEDIUM or higher severity." > .ralph/security-feedback.txt
+    echo "1. [HIGH] Command Injection — scripts/worker.sh:42 — unquoted variable passed to eval. Remediation: quote the variable or avoid eval." >> .ralph/security-feedback.txt
+    echo "Mock security gate: FAIL"
+  else
+    echo "Mock security gate: PASS"
   fi
 
 elif [[ "${prompt}" == *"Work on the task"* ]] || [[ "${prompt}" == *"You are on iteration"* ]]; then

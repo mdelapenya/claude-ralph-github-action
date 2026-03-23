@@ -78,6 +78,26 @@ inputs:
     description: 'Slash command to trigger a re-review on a Ralph PR (e.g., "/ralph-review focus on tests")'
     required: false
     default: '/ralph-review'
+  security_gate_enabled:
+    description: 'Enable the security gate: runs an independent security audit after the reviewer approves. Set to "false" to disable.'
+    required: false
+    default: 'true'
+  security_gate_model:
+    description: 'Claude model for the security gate phase'
+    required: false
+    default: 'sonnet'
+  max_turns_security_gate:
+    description: 'Maximum agentic turns per security gate invocation'
+    required: false
+    default: '50'
+  security_gate_tools:
+    description: 'Comma-separated tools the security gate can use (read-only by default)'
+    required: false
+    default: 'Bash,Read,Write,Glob,Grep'
+  security_gate_tone:
+    description: 'Personality/tone for the security gate agent (e.g., "Agent Smith", "HAL 9000"). If set, the security gate will respond with this personality.'
+    required: false
+    default: ''
 
 outputs:
   pr_url:
@@ -109,3 +129,8 @@ runs:
     INPUT_COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
     INPUT_COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
     INPUT_RALPH_REVIEW_COMMAND: ${{ inputs.ralph_review_command }}
+    INPUT_SECURITY_GATE_ENABLED: ${{ inputs.security_gate_enabled }}
+    INPUT_SECURITY_GATE_MODEL: ${{ inputs.security_gate_model }}
+    INPUT_MAX_TURNS_SECURITY_GATE: ${{ inputs.max_turns_security_gate }}
+    INPUT_SECURITY_GATE_TOOLS: ${{ inputs.security_gate_tools }}
+    INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}

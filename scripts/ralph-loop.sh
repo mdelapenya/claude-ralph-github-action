@@ -107,6 +107,50 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
   state_log_audit "DECISION" "iteration=${iteration} result=${result}"
 
   if [[ "${result}" == "SHIP" ]]; then
+    # --- SECURITY GATE ---
+    if [[ "${INPUT_SECURITY_GATE_ENABLED:-true}" == "true" ]]; then
+      echo ""
+      echo "--- Security Gate Phase ---"
+      state_log_audit "SECURITY_GATE_START" "iteration=${iteration}"
+
+      # Reset security result so a stale PASS from a prior iteration cannot slip through
+      rm -f "${RALPH_DIR}/security-result.txt" "${RALPH_DIR}/security-feedback.txt"
+
+      if ! "${SCRIPT_DIR}/security-gate.sh"; then
+        echo "ERROR: Security gate failed on iteration ${iteration}"
+        state_log_audit "SECURITY_GATE_END" "iteration=${iteration} status=ERROR"
+        state_write_final_status "ERROR"
+        exit 1
+      fi
+      state_log_audit "SECURITY_GATE_END" "iteration=${iteration} status=ok"
+
+      security_result="$(state_read_security_result)"
+      echo "--- Security Gate Decision: ${security_result} ---"
+      state_log_audit "SECURITY_GATE_DECISION" "iteration=${iteration} result=${security_result}"
+
+      if [[ "${security_result}" == "FAIL" ]]; then
+        echo "Security gate blocked ship. Forcing REVISE."
+        security_feedback="$(state_read_security_feedback)"
+        chmod u+w "${RALPH_DIR}/review-result.txt" 2>/dev/null || true
+        state_write_review_result "REVISE"
+        existing_feedback="$(state_read_review_feedback)"
+        if [[ -n "${existing_feedback}" ]]; then
+          chmod u+w "${RALPH_DIR}/review-feedback.txt" 2>/dev/null || true
+          state_write_review_feedback "SECURITY GATE BLOCKED SHIP:"$'\n'"${security_feedback}"$'\n\n'"Previous reviewer feedback:"$'\n'"${existing_feedback}"
+        else
+          chmod u+w "${RALPH_DIR}/review-feedback.txt" 2>/dev/null || true
+          state_write_review_feedback "SECURITY GATE BLOCKED SHIP:"$'\n'"${security_feedback}"
+        fi
+        state_log_audit "SECURITY_GATE_BLOCKED" "iteration=${iteration}"
+        echo "Continuing to next iteration with security findings."
+        feedback="$(state_read_review_feedback)"
+        if [[ -n "${feedback}" ]]; then
+          echo "Feedback preview: ${feedback:0:200}..."
+        fi
+        continue
+      fi
+    fi
+
     echo "Reviewer approved! Shipping."
     state_log_audit "LOOP_END" "status=SHIPPED iteration=${iteration}"
     state_write_final_status "SHIPPED"

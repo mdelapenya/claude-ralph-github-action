@@ -146,6 +146,37 @@ state_read_event_comment_id() {
   echo "${line#comment_id=}"
 }
 
+# Write the security gate result (PASS or FAIL)
+# Args: $1 = result text
+state_write_security_result() {
+  echo "$1" > "${RALPH_DIR}/security-result.txt"
+}
+
+# Read the security gate result, normalized to PASS or FAIL
+# Returns FAIL if the file is missing or ambiguous (fail-safe default)
+state_read_security_result() {
+  local raw
+  raw="$(cat "${RALPH_DIR}/security-result.txt" 2>/dev/null || echo "")"
+  local normalized
+  normalized="$(echo "${raw}" | head -1 | tr '[:lower:]' '[:upper:]' | grep -oE '(PASS|FAIL)' | head -1 || true)"
+  if [[ "${normalized}" == "PASS" ]]; then
+    echo "PASS"
+  else
+    echo "FAIL"
+  fi
+}
+
+# Write security gate findings for the worker
+# Args: $1 = findings text
+state_write_security_feedback() {
+  echo "$1" > "${RALPH_DIR}/security-feedback.txt"
+}
+
+# Read security gate findings
+state_read_security_feedback() {
+  cat "${RALPH_DIR}/security-feedback.txt" 2>/dev/null || echo ""
+}
+
 # Write a push error message
 # Args: $1 = error text
 state_write_push_error() {

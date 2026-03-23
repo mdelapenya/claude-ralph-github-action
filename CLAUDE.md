@@ -12,15 +12,15 @@ The orchestration is entirely in bash. The flow is:
 
 **entrypoint.sh** -> extracts issue data, sets up git branch, initializes `.ralph/` state -> calls **ralph-loop.sh**
 
-**ralph-loop.sh** -> iterates: **worker.sh** (claude -p with worker prompt) -> check for commits -> **reviewer.sh** (claude -p with reviewer prompt) -> check SHIP/REVISE -> loop or exit. If the worker makes no commits, the loop continues to the next iteration with feedback instead of aborting.
+**ralph-loop.sh** -> iterates: **worker.sh** (claude -p with worker prompt) -> check for commits -> **reviewer.sh** (claude -p with reviewer prompt) -> check SHIP/REVISE -> if SHIP: **security-gate.sh** (claude -p with security prompt) -> check PASS/FAIL -> loop or exit. If the worker makes no commits, the loop continues to the next iteration with feedback instead of aborting.
 
 **state.sh** -> read/write helpers for `.ralph/` directory (task, iteration, review result, feedback, status). State lives in the working tree only and is never committed to the branch.
 
 **pr-manager.sh** -> creates/updates PR via `gh`, comments on the issue with results.
 
-**prompts/** -> system prompts appended to claude CLI calls. Worker gets `worker-system.md`, reviewer gets `reviewer-system.md`.
+**prompts/** -> system prompts appended to claude CLI calls. Worker gets `worker-system.md`, reviewer gets `reviewer-system.md`, security gate gets `security-gate-system.md`.
 
-Key design: the worker and reviewer are invoked via `claude -p` (print/non-interactive mode) with `--allowedTools` to sandbox capabilities. The worker merges the base branch, resolves any conflicts, implements the task, and commits directly. The reviewer evaluates changes, runs tests/linters, and decides SHIP or REVISE.
+Key design: the worker and reviewer are invoked via `claude -p` (print/non-interactive mode) with `--allowedTools` to sandbox capabilities. The worker merges the base branch, resolves any conflicts, implements the task, and commits directly. The reviewer evaluates changes, runs tests/linters, and decides SHIP or REVISE. When the reviewer decides SHIP, the security gate performs an independent read-only security audit before the loop exits.
 
 ## Build & Test
 
@@ -52,7 +52,7 @@ Tests live in `test/` and are organized as:
 - **`test/integration/`** — Integration tests that exercise real scripts (`ralph-loop.sh` -> `worker.sh` -> `reviewer.sh`) with mock `claude` and `gh` binaries
 - **`test/helpers/`** — Shared test utilities:
   - `setup.sh` — Workspace creation, environment setup, event JSON generation
-  - `mocks.sh` — Mock `claude` and `gh` binaries placed on PATH; configurable via `MOCK_REVIEW_DECISION`, `MOCK_WORKER_FAIL`, `MOCK_MERGE_STRATEGY`
+  - `mocks.sh` — Mock `claude` and `gh` binaries placed on PATH; configurable via `MOCK_REVIEW_DECISION`, `MOCK_WORKER_FAIL`, `MOCK_MERGE_STRATEGY`, `MOCK_SECURITY_GATE_DECISION`
 - **`test/run-all-tests.sh`** — Runs all `test/unit/test-*.sh` and `test/integration/test-*.sh` files
 
 Integration tests create isolated temp workspaces with bare git remotes, so `git push` works without network access. Each test configures mock behavior via env vars, runs the real loop scripts, and validates `.ralph/` state files and exit codes.
@@ -68,6 +68,17 @@ State is persisted in `.ralph/` directory (plain text files) in the working tree
 - `review-feedback.txt` — Reviewer's feedback for the next iteration
 - `pr-title.txt` — PR title in conventional commits format (set by reviewer)
 - `iteration.txt` — Current iteration number
+- `security-result.txt` — `PASS` or `FAIL` (written by security gate; defaults to `FAIL` if missing)
+- `security-feedback.txt` — Security gate findings for the worker (present only on FAIL)
+
+### Security Gate
+When the reviewer decides SHIP, an independent security gate agent runs before the loop exits. It performs a read-only audit of the branch diff against a security checklist (secrets, injection, auth, crypto, shell safety, dependency pinning, info-disclosure, privilege). A finding of MEDIUM severity or higher writes `FAIL` and forces another iteration — the worker receives the findings as feedback. The gate also detects prompt injection attempts in any file it reads and treats them as CRITICAL findings.
+
+Key properties:
+- **Fail-safe**: defaults to `FAIL` if the agent crashes or produces no output
+- **Stale-result protection**: `security-result.txt` is deleted at gate entry so a prior PASS cannot carry forward
+- **Opt-out**: set `security_gate_enabled: false` in the workflow input to disable entirely
+- **Configurable**: `security_gate_model`, `max_turns_security_gate`, `security_gate_tools`, `security_gate_tone` inputs
 
 ### PR Titles
 PR titles follow [conventional commits](https://www.conventionalcommits.org/) format. The reviewer agent infers the type from changes and sets the title. Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`.
