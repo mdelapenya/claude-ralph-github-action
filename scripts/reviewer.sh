@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-50}"
+MAX_TURNS="${INPUT_MAX_TURNS_REVIEWER:-}"
 REVIEWER_TOOLS="${INPUT_REVIEWER_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task}"
 REVIEWER_TONE="${INPUT_REVIEWER_TONE:-}"
 
@@ -25,7 +25,7 @@ prompt+=$'\n\n'"3. Examine the actual code changes in the repository."
 prompt+=$'\n\n'"4. Write SHIP or REVISE to .ralph/review-result.txt"
 prompt+=$'\n\n'"5. If REVISE, write specific feedback to .ralph/review-feedback.txt"
 
-echo "=== Reviewer Phase (iteration ${iteration}, model: ${REVIEWER_MODEL}, max-turns: ${MAX_TURNS}) ==="
+echo "=== Reviewer Phase (iteration ${iteration}, model: ${REVIEWER_MODEL}, max-turns: ${MAX_TURNS:-unlimited}) ==="
 
 # Read the base branch from pr-info.txt (fall back to "main")
 base_branch="main"
@@ -64,10 +64,10 @@ fi
 cli_args=(
   -p
   --model "${REVIEWER_MODEL}"
-  --max-turns "${MAX_TURNS}"
   --allowedTools "${REVIEWER_TOOLS}"
   --append-system-prompt "${system_prompt}"
 )
+[[ -n "${MAX_TURNS}" ]] && cli_args+=(--max-turns "${MAX_TURNS}")
 
 if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
   echo "⚠️  RALPH_VERBOSE=true — agent output includes full tool call details. Do not use in production or in workflows where runner logs are publicly visible."

@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 SECURITY_GATE_MODEL="${INPUT_SECURITY_GATE_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_SECURITY_GATE:-50}"
+MAX_TURNS="${INPUT_MAX_TURNS_SECURITY_GATE:-}"
 SECURITY_GATE_TOOLS="${INPUT_SECURITY_GATE_TOOLS:-Bash,Read,Write,Glob,Grep}"
 SECURITY_GATE_TONE="${INPUT_SECURITY_GATE_TONE:-}"
 
@@ -39,7 +39,7 @@ if [[ -n "${_gate_repo}" && -n "${GITHUB_REPOSITORY:-}" && "${_gate_repo}" != "$
 fi
 unset _gate_repo
 
-echo "=== Security Gate Phase (iteration ${iteration}, model: ${SECURITY_GATE_MODEL}, max-turns: ${MAX_TURNS}) ==="
+echo "=== Security Gate Phase (iteration ${iteration}, model: ${SECURITY_GATE_MODEL}, max-turns: ${MAX_TURNS:-unlimited}) ==="
 
 # Build the system prompt
 system_prompt="$(cat "${PROMPTS_DIR}/security-gate-system.md")"
@@ -64,10 +64,10 @@ fi
 cli_args=(
   -p
   --model "${SECURITY_GATE_MODEL}"
-  --max-turns "${MAX_TURNS}"
   --allowedTools "${SECURITY_GATE_TOOLS}"
   --append-system-prompt "${system_prompt}"
 )
+[[ -n "${MAX_TURNS}" ]] && cli_args+=(--max-turns "${MAX_TURNS}")
 
 if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
   echo "⚠️  RALPH_VERBOSE=true — agent output includes full tool call details. Do not use in production or in workflows where runner logs are publicly visible."

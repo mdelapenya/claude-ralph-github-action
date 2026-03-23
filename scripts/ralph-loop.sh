@@ -24,12 +24,12 @@ echo "  Configuration:"
 echo "  ┌─────────────────────────────────────────────────────────────┐"
 printf "  │  %-28s %-30s│\n" "max_iterations:"       "${MAX_ITERATIONS}"
 printf "  │  %-28s %-30s│\n" "worker model:"          "${INPUT_WORKER_MODEL:-sonnet}"
-printf "  │  %-28s %-30s│\n" "worker max_turns:"      "${INPUT_MAX_TURNS_WORKER:-50}"
+printf "  │  %-28s %-30s│\n" "worker max_turns:"      "${INPUT_MAX_TURNS_WORKER:-unlimited}"
 printf "  │  %-28s %-30s│\n" "reviewer model:"        "${INPUT_REVIEWER_MODEL:-sonnet}"
-printf "  │  %-28s %-30s│\n" "reviewer max_turns:"    "${INPUT_MAX_TURNS_REVIEWER:-50}"
+printf "  │  %-28s %-30s│\n" "reviewer max_turns:"    "${INPUT_MAX_TURNS_REVIEWER:-unlimited}"
 printf "  │  %-28s %-30s│\n" "security_gate_enabled:" "${INPUT_SECURITY_GATE_ENABLED:-true}"
 printf "  │  %-28s %-30s│\n" "security gate model:"   "${INPUT_SECURITY_GATE_MODEL:-sonnet}"
-printf "  │  %-28s %-30s│\n" "security gate max_turns:" "${INPUT_MAX_TURNS_SECURITY_GATE:-100}"
+printf "  │  %-28s %-30s│\n" "security gate max_turns:" "${INPUT_MAX_TURNS_SECURITY_GATE:-unlimited}"
 echo "  └─────────────────────────────────────────────────────────────┘"
 echo ""
 state_log_audit "LOOP_START" "max=${MAX_ITERATIONS}"
@@ -145,7 +145,7 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
       _diff_base="${_diff_base:-main}"
       _diff_lines="$(git diff "origin/${_diff_base}..HEAD" 2>/dev/null | wc -l | tr -d ' ')" || _diff_lines=0
       if [[ "${_diff_lines}" -gt 10000 ]]; then
-        echo "WARNING: Diff is ${_diff_lines} lines — security gate may exhaust max-turns (${INPUT_MAX_TURNS_SECURITY_GATE:-50}) before completing the audit. Consider increasing max_turns_security_gate."
+        echo "WARNING: Diff is ${_diff_lines} lines — security gate may exhaust max-turns (${INPUT_MAX_TURNS_SECURITY_GATE:-unlimited}) before completing the audit. Consider setting max_turns_security_gate."
         state_log_audit "SECURITY_GATE_LARGE_DIFF" "iteration=${iteration} lines=${_diff_lines}"
       fi
       unset _diff_base _diff_lines

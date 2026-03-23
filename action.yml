@@ -27,13 +27,13 @@ inputs:
     required: false
     default: '5'
   max_turns_worker:
-    description: 'Maximum agentic turns per worker invocation'
+    description: 'Maximum agentic turns per worker invocation (omit to use the Claude CLI default)'
     required: false
-    default: '50'
+    default: ''
   max_turns_reviewer:
-    description: 'Maximum agentic turns per reviewer invocation'
+    description: 'Maximum agentic turns per reviewer invocation (omit to use the Claude CLI default)'
     required: false
-    default: '50'
+    default: ''
   trigger_label:
     description: 'Issue label that triggers the Ralph loop'
     required: false
@@ -87,9 +87,9 @@ inputs:
     required: false
     default: 'sonnet'
   max_turns_security_gate:
-    description: 'Maximum agentic turns per security gate invocation'
+    description: 'Maximum agentic turns per security gate invocation (omit to use the Claude CLI default)'
     required: false
-    default: '50'
+    default: ''
   security_gate_tools:
     description: 'Comma-separated tools the security gate can use (read-only by default)'
     required: false
