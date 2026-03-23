@@ -48,8 +48,8 @@ INPUT_WORKER_MODEL=haiku INPUT_MAX_ITERATIONS=1 ANTHROPIC_API_KEY=sk-... ./test/
 
 Tests live in `test/` and are organized as:
 
-- **`test/unit/`** — Unit tests for individual functions (state.sh helpers, output format validation)
-- **`test/integration/`** — Integration tests that exercise real scripts (`ralph-loop.sh` -> `worker.sh` -> `reviewer.sh`) with mock `claude` and `gh` binaries
+- **`test/unit/`** — Unit tests for individual functions (state.sh helpers, output format validation, git config, workflow-patch helpers)
+- **`test/integration/`** — Integration tests that exercise real scripts (`ralph-loop.sh` -> `worker.sh` -> `reviewer.sh`) with mock `claude` and `gh` binaries; covers shipped flow, max-iterations, error handling, squash-merge, PR review events, push error recovery, workflow push fallback, and security gate (pass / fail-then-pass / disabled)
 - **`test/helpers/`** — Shared test utilities:
   - `setup.sh` — Workspace creation, environment setup, event JSON generation
   - `mocks.sh` — Mock `claude` and `gh` binaries placed on PATH; configurable via `MOCK_REVIEW_DECISION`, `MOCK_WORKER_FAIL`, `MOCK_MERGE_STRATEGY`, `MOCK_SECURITY_GATE_DECISION`
@@ -68,8 +68,13 @@ State is persisted in `.ralph/` directory (plain text files) in the working tree
 - `review-feedback.txt` — Reviewer's feedback for the next iteration
 - `pr-title.txt` — PR title in conventional commits format (set by reviewer)
 - `iteration.txt` — Current iteration number
+- `issue-number.txt` — GitHub issue number (set once at startup, locked read-only)
 - `security-result.txt` — `PASS` or `FAIL` (written by security gate; defaults to `FAIL` if missing)
 - `security-feedback.txt` — Security gate findings for the worker (present only on FAIL)
+- `final-status.txt` — Final loop outcome: `SHIPPED`, `MAX_ITERATIONS`, or `ERROR`
+- `push-error.txt` — Last push failure details (cleared on success)
+- `audit.log` — Append-only structured log of all phase transitions (`chattr +a` on Linux)
+- `*.sha256` — SHA-256 checksum sidecars for tamper-detection on `review-result.txt` and `security-result.txt`
 
 ### Security Gate
 When the reviewer decides SHIP, an independent security gate agent runs before the loop exits. It performs a read-only audit of the branch diff against a security checklist (secrets, injection, auth, crypto, shell safety, dependency pinning, info-disclosure, privilege). A finding of MEDIUM severity or higher writes `FAIL` and forces another iteration — the worker receives the findings as feedback. The gate also detects prompt injection attempts in any file it reads and treats them as CRITICAL findings.

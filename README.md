@@ -90,11 +90,11 @@ jobs:
 | `worker_model` | No | `sonnet` | Claude model for the worker phase |
 | `reviewer_model` | No | `sonnet` | Claude model for the review phase |
 | `max_iterations` | No | `5` | Maximum number of work/review cycles |
-| `max_turns_worker` | No | `30` | Maximum agentic turns per worker invocation |
-| `max_turns_reviewer` | No | `30` | Maximum agentic turns per reviewer invocation |
+| `max_turns_worker` | No | _(Claude CLI default)_ | Maximum agentic turns per worker invocation |
+| `max_turns_reviewer` | No | _(Claude CLI default)_ | Maximum agentic turns per reviewer invocation |
 | `trigger_label` | No | `ralph` | Issue label that triggers the loop |
 | `base_branch` | No | — | Branch to create the PR against (auto-detected from repository default branch if not specified) |
-| `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the worker can use |
+| `worker_allowed_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,Task,WebFetch,WebSearch` | Comma-separated tools the worker can use |
 | `reviewer_tools` | No | `Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task` | Comma-separated tools the reviewer can use |
 | `merge_strategy` | No | `pr` | Merge strategy: `pr` (create a pull request) or `squash-merge` (squash and push directly to default branch) |
 | `default_branch` | No | — | Default branch to merge into when using `squash-merge` strategy (auto-detected from repo if not specified) |
@@ -105,7 +105,7 @@ jobs:
 | `ralph_review_command` | No | `/ralph-review` | Slash command to trigger a re-review run on a Ralph-created PR (e.g., `/ralph-review focus on tests`) |
 | `security_gate_enabled` | No | `true` | Enable the security gate. Set to `false` to skip the security audit before shipping (not recommended for production) |
 | `security_gate_model` | No | `sonnet` | Claude model for the security gate phase |
-| `max_turns_security_gate` | No | `50` | Maximum agentic turns per security gate invocation |
+| `max_turns_security_gate` | No | _(Claude CLI default)_ | Maximum agentic turns per security gate invocation |
 | `security_gate_tools` | No | `Bash,Read,Write,Glob,Grep` | Comma-separated tools the security gate can use |
 | `security_gate_tone` | No | — | Personality/tone for the security gate agent (e.g., `"Agent Smith"`, `"HAL 9000"`) |
 
@@ -128,6 +128,13 @@ Ralph creates a `.ralph/` directory in the working tree (never committed to the 
 - **`review-feedback.txt`** — Reviewer's feedback for the next iteration
 - **`pr-title.txt`** — PR title in conventional commits format (set by reviewer)
 - **`iteration.txt`** — Current iteration number
+- **`issue-number.txt`** — GitHub issue number (set once at startup)
+- **`security-result.txt`** — `PASS` or `FAIL` (written by security gate; defaults to `FAIL` if missing)
+- **`security-feedback.txt`** — Security gate findings for the worker (present only on `FAIL`)
+- **`final-status.txt`** — Final loop outcome: `SHIPPED`, `MAX_ITERATIONS`, or `ERROR`
+- **`push-error.txt`** — Last push failure details (cleared on success)
+- **`audit.log`** — Append-only structured log of all phase transitions
+- **`*.sha256`** — SHA-256 checksum sidecars for tamper-detection on `review-result.txt` and `security-result.txt`
 
 The worker agent merges the base branch (resolving any conflicts), implements the task, and commits changes directly. The reviewer agent evaluates the changes, runs tests and linters independently, and decides whether to SHIP or REVISE. When the reviewer decides SHIP, the security gate performs an independent read-only audit of the branch diff before the loop exits. If the worker makes no commits in an iteration, the loop continues to the next iteration with feedback instead of aborting.
 
@@ -159,7 +166,7 @@ chore: update dependencies
 refactor: simplify state management
 ```
 
-Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`.
+Supported types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `build`, `ci`, `revert`.
 
 If a PR already exists (on re-runs), the reviewer updates the title directly via `gh pr edit`. On the first run, the reviewer writes the title to `.ralph/pr-title.txt` and the orchestration uses it when creating the PR.
 
@@ -370,11 +377,18 @@ shellcheck --severity=warning entrypoint.sh scripts/*.sh test/**/*.sh test/*.sh
 |----------|-------|---------------|
 | **Unit tests** | `test/unit/test-state.sh` | `state.sh` read/write helpers, including security result/feedback helpers |
 | | `test/unit/test-output-format.sh` | Action output format validation (`pr_url`, `iterations`, `final_status`) |
+| | `test/unit/test-git-config.sh` | Git author config is set correctly from `INPUT_COMMIT_AUTHOR_*` |
+| | `test/unit/test-workflow-patch.sh` | `workflow-patch.sh` helper functions generate correct patch comments |
 | **Integration tests** | `test/integration/test-shipped-flow.sh` | Full SHIP path: worker commits, reviewer approves, gate passes, PR URL written |
 | | `test/integration/test-max-iterations.sh` | REVISE loop exhausts `INPUT_MAX_ITERATIONS`, exits with code 2 |
 | | `test/integration/test-error-handling.sh` | Worker failure triggers ERROR exit with code 1 |
 | | `test/integration/test-squash-merge.sh` | Squash-merge strategy writes `merge-commit.txt` instead of PR URL |
 | | `test/integration/test-pr-review-comment.sh` | `/ralph-review` slash command runs loop with PR review context in `task.md` |
+| | `test/integration/test-pr-review-submitted.sh` | `pull_request_review` event triggers loop with review body as context |
+| | `test/integration/test-reaction.sh` | Issue reactions trigger the Ralph loop correctly |
+| | `test/integration/test-push-error-recovery.sh` | Push failure is recorded and fed back to the worker as review feedback |
+| | `test/integration/test-rerun-already-pushed.sh` | Re-run on a branch already pushed to remote continues without force-pushing |
+| | `test/integration/test-workflow-push-fallback.sh` | Workflow file push failures generate a patch comment and retry without `.github/workflows/` |
 | | `test/integration/test-security-gate-pass.sh` | Reviewer SHIPs, security gate PASSes → SHIPPED; audit log records gate phases |
 | | `test/integration/test-security-gate-fail-then-pass.sh` | Gate FAILs on first SHIP, forces REVISE with findings; gate PASSes on iteration 2 → SHIPPED |
 | | `test/integration/test-security-gate-disabled.sh` | `security_gate_enabled: false` skips gate, ships normally, no `security-result.txt` written |
