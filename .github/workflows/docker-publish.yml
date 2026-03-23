@@ -23,6 +23,13 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Parse major version tag
+        id: version
+        if: github.event_name == 'release'
+        run: |
+          MAJOR="$(echo "${GITHUB_REF_NAME}" | grep -oE '^v[0-9]+' || true)"
+          echo "major=${MAJOR}" >> "${GITHUB_OUTPUT}"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -31,3 +38,4 @@ jobs:
           tags: |
             mdelapenya/claude-ralph-github-action:latest
             mdelapenya/claude-ralph-github-action:${{ github.ref_name }}
+            ${{ github.event_name == 'release' && steps.version.outputs.major != '' && format('mdelapenya/claude-ralph-github-action:{0}', steps.version.outputs.major) || '' }}
