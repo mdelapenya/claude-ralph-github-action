@@ -96,6 +96,13 @@ fi
 # removes workflow changes from the branch, and retries the push.
 branch="$(grep '^branch=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
 repo="$(grep '^repo=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
+
+# Validate repo= against GITHUB_REPOSITORY to prevent a worker-poisoned pr-info.txt
+# from routing gh commands to an attacker-controlled repository.
+if [[ -n "${repo}" && -n "${GITHUB_REPOSITORY:-}" && "${repo}" != "${GITHUB_REPOSITORY}" ]]; then
+  echo "ERROR: pr-info.txt repo='${repo}' does not match GITHUB_REPOSITORY='${GITHUB_REPOSITORY}' — possible pr-info.txt tampering"
+  exit 1
+fi
 issue_number="$(state_read_issue_number)"
 default_branch="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
 default_branch="${default_branch:-main}"

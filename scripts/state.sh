@@ -239,10 +239,30 @@ state_verify_checksum() {
 # Args: $1 = phase (LOOP_START, WORKER_START, REVIEWER_END, DECISION, …)
 #        $2 = detail string (e.g. "iteration=1 result=SHIP")
 # Uses printf %s to prevent format-string injection. Never truncates the file (>> only).
+# Tab and newline characters are stripped from detail to prevent TSV column corruption.
 state_log_audit() {
   local phase="$1"
   local detail="${2:-}"
+  # Strip tab and newline characters that would corrupt the TSV structure
+  detail="${detail//$'\t'/ }"
+  detail="${detail//$'\n'/ }"
   local ts
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   printf '%s\t%s\t%s\n' "${ts}" "${phase}" "${detail}" >> "${RALPH_DIR}/audit.log"
+}
+
+# Remove any symlinks inside the .ralph/ directory.
+# The worker agent could create a symlink such as .ralph/security-result.txt -> /dev/fd/1
+# so that a subsequent write by the security gate follows the symlink to an attacker-
+# controlled target. Removing all symlinks before each sensitive phase closes this vector.
+state_remove_ralph_symlinks() {
+  local symlink removed=0
+  while IFS= read -r -d '' symlink; do
+    echo "WARNING: removing symlink in ${RALPH_DIR}/: ${symlink}"
+    rm -f "${symlink}"
+    removed=$((removed + 1))
+  done < <(find "${RALPH_DIR}" -maxdepth 1 -type l -print0 2>/dev/null)
+  if [[ "${removed}" -gt 0 ]]; then
+    state_log_audit "SYMLINK_REMOVED" "count=${removed}"
+  fi
 }

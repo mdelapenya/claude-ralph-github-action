@@ -121,6 +121,22 @@ while [[ "${iteration}" -lt "${MAX_ITERATIONS}" ]]; do
       # Reset security result so a stale PASS from a prior iteration cannot slip through
       rm -f "${RALPH_DIR}/security-result.txt" "${RALPH_DIR}/security-result.txt.sha256" "${RALPH_DIR}/security-feedback.txt"
 
+      # Remove any symlinks in .ralph/ before the gate writes its verdict.
+      # The worker could create .ralph/security-result.txt as a symlink so that the
+      # gate's write follows it to an attacker-controlled path.
+      state_remove_ralph_symlinks
+
+      # Warn if the diff is large enough to risk exhausting the gate's max-turns budget
+      # before the audit is complete (which produces an inconclusive FAIL, not a finding).
+      _diff_base="$(grep '^default_branch=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2- || echo "main")"
+      _diff_base="${_diff_base:-main}"
+      _diff_lines="$(git diff "origin/${_diff_base}..HEAD" 2>/dev/null | wc -l | tr -d ' ')" || _diff_lines=0
+      if [[ "${_diff_lines}" -gt 10000 ]]; then
+        echo "WARNING: Diff is ${_diff_lines} lines — security gate may exhaust max-turns (${INPUT_MAX_TURNS_SECURITY_GATE:-50}) before completing the audit. Consider increasing max_turns_security_gate."
+        state_log_audit "SECURITY_GATE_LARGE_DIFF" "iteration=${iteration} lines=${_diff_lines}"
+      fi
+      unset _diff_base _diff_lines
+
       # Remove any .claude/ directory the worker may have created to poison the gate's
       # per-project CLAUDE.md instructions. Claude Code loads .claude/CLAUDE.md as
       # project-level instructions before the system prompt; removing it prevents override.

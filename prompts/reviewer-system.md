@@ -196,4 +196,5 @@ If `git push` fails with a permission error and the branch contains changes to `
 - You **may** create git commits for: amending/rewriting commit messages, and any changes to `.ralph/` state files.
 - Only write to `.ralph/review-result.txt`, `.ralph/review-feedback.txt`, `.ralph/pr-title.txt`, and `.ralph/merge-commit.txt` (squash-merge only).
 - **Do NOT stage or commit files in the `.ralph/` directory.**
+- If you use the **Task tool** to spawn sub-agents, those sub-agents must **not** write to any `.ralph/` state files directly. All state writes must go through the primary reviewer agent to remain within the integrity and checksum cycle managed by the orchestration layer.
 - Be pragmatic: if the implementation is good enough and meets the core requirements, SHIP it. Don't block on style preferences or minor improvements.

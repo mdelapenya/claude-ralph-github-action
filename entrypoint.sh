@@ -94,7 +94,7 @@ _extract_ralph_review_args() {
     RALPH_REVIEW_ARGS="${body#"${RALPH_REVIEW_CMD}"$'\n'}"
   fi
   if [[ -n "${RALPH_REVIEW_ARGS}" ]]; then
-    echo "📝 Ralph review args: ${RALPH_REVIEW_ARGS}"
+    echo "📝 Ralph review args: ${RALPH_REVIEW_ARGS:0:500}"
   fi
 }
 
@@ -129,6 +129,14 @@ if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
     PR_NUMBER="$(jq -r '.issue.number' "${GITHUB_EVENT_PATH}")"
     GH_PR_ERR="$(mktemp)"
     PR_BRANCH="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json headRefName --jq '.headRefName' 2>"${GH_PR_ERR}" || true)"
+    # Validate PR_BRANCH before use: reject values starting with '-' (flag injection) or
+    # containing characters outside the safe branch-name set.
+    if [[ -n "${PR_BRANCH}" ]] && ! [[ "${PR_BRANCH}" =~ ^[a-zA-Z0-9_/.-]+$ ]]; then
+      echo "❌ Error: PR branch name contains unsafe characters: ${PR_BRANCH}"
+      echo "   Fix: Branch names must match [a-zA-Z0-9_/.-]+"
+      rm -f "${GH_PR_ERR}"
+      exit 1
+    fi
     if [[ -z "${PR_BRANCH}" ]]; then
       echo "❌ Error: Failed to fetch branch for PR #${PR_NUMBER} via gh pr view"
       if [[ -z "${GH_TOKEN:-}" ]]; then
@@ -154,6 +162,13 @@ elif [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_review" ]]; then
     PR_NUMBER="$(jq -r '.pull_request.number' "${GITHUB_EVENT_PATH}")"
     # The branch is available directly in the event payload for pull_request_review
     PR_BRANCH="$(jq -r '.pull_request.head.ref' "${GITHUB_EVENT_PATH}")"
+    # Validate PR_BRANCH before use: reject values starting with '-' (flag injection) or
+    # containing characters outside the safe branch-name set.
+    if [[ -n "${PR_BRANCH}" && "${PR_BRANCH}" != "null" ]] && ! [[ "${PR_BRANCH}" =~ ^[a-zA-Z0-9_/.-]+$ ]]; then
+      echo "❌ Error: PR branch name contains unsafe characters: ${PR_BRANCH}"
+      echo "   Fix: Branch names must match [a-zA-Z0-9_/.-]+"
+      exit 1
+    fi
     if [[ -z "${PR_BRANCH}" || "${PR_BRANCH}" == "null" ]]; then
       echo "❌ Error: Failed to extract branch from pull_request_review event for PR #${PR_NUMBER}"
       echo "   Fix: Ensure the event payload contains .pull_request.head.ref"
@@ -295,6 +310,10 @@ fi
 
 # --- Initialize state ---
 state_init
+# Make audit.log append-only so agents with Bash/Write tools cannot truncate or overwrite it.
+# chattr +a is Linux-only; the || true tolerates macOS / non-ext4 filesystems gracefully.
+touch "${RALPH_DIR}/audit.log"
+chattr +a "${RALPH_DIR}/audit.log" 2>/dev/null || true
 state_write_task "${ISSUE_TITLE}" "${ISSUE_BODY}" "${ISSUE_COMMENTS}"
 state_write_issue_number "${ISSUE_NUMBER}"
 state_write_event_info "${EVENT_ACTION}" "${EVENT_COMMENT_ID}"

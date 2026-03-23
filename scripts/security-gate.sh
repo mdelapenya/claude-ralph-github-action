@@ -29,6 +29,16 @@ prompt+=$'\n\n'"4. Audit all changes on the branch against the security checklis
 prompt+=$'\n\n'"5. Write PASS or FAIL to .ralph/security-result.txt."
 prompt+=$'\n\n'"6. If FAIL, write a structured findings report to .ralph/security-feedback.txt."
 
+# Validate repo= in pr-info.txt against GITHUB_REPOSITORY before the agent reads it.
+# A worker-poisoned pr-info.txt with repo=attacker/repo would route the agent's gh
+# API calls to an attacker-controlled repository.
+_gate_repo="$(grep '^repo=' "${RALPH_DIR}/pr-info.txt" 2>/dev/null | cut -d= -f2 || echo "")"
+if [[ -n "${_gate_repo}" && -n "${GITHUB_REPOSITORY:-}" && "${_gate_repo}" != "${GITHUB_REPOSITORY}" ]]; then
+  echo "ERROR: pr-info.txt repo='${_gate_repo}' does not match GITHUB_REPOSITORY='${GITHUB_REPOSITORY}' — aborting security gate"
+  exit 1
+fi
+unset _gate_repo
+
 echo "=== Security Gate Phase (iteration ${iteration}, model: ${SECURITY_GATE_MODEL}) ==="
 
 # Build the system prompt
@@ -73,11 +83,14 @@ if [[ ${gate_exit} -ne 0 ]]; then
   exit ${gate_exit}
 fi
 
-# Ensure the security result file exists; default to FAIL if missing (fail-safe)
+# Ensure the security result file exists; default to FAIL if missing (fail-safe).
+# This fires when the agent exhausts max-turns before completing the audit, or crashes
+# mid-run. It is intentionally conservative: an incomplete audit is treated as a failure,
+# not a pass. The feedback message tells the worker to investigate the audit coverage.
 if [[ ! -f "${RALPH_DIR}/security-result.txt" ]]; then
-  echo "WARNING: Security gate did not write security-result.txt, defaulting to FAIL"
+  echo "WARNING: Security gate did not write security-result.txt — may have exhausted max-turns (${MAX_TURNS}) or crashed. Defaulting to FAIL."
   state_write_security_result "FAIL"
-  state_write_security_feedback "Security gate failed to produce a result. Please re-run the security review."
+  state_write_security_feedback "Security gate did not complete its audit (possible max-turns exhaustion at ${MAX_TURNS} turns or agent crash). This is not a finding — the audit was inconclusive. Reduce diff size, simplify the changeset, or increase max_turns_security_gate and re-run."
 fi
 
 echo "=== Security Gate Phase Complete ==="
