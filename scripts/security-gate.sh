@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 SECURITY_GATE_MODEL="${INPUT_SECURITY_GATE_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_SECURITY_GATE:-20}"
+MAX_TURNS="${INPUT_MAX_TURNS_SECURITY_GATE:-50}"
 SECURITY_GATE_TOOLS="${INPUT_SECURITY_GATE_TOOLS:-Bash,Read,Write,Glob,Grep}"
 SECURITY_GATE_TONE="${INPUT_SECURITY_GATE_TONE:-}"
 
@@ -39,7 +39,7 @@ if [[ -n "${_gate_repo}" && -n "${GITHUB_REPOSITORY:-}" && "${_gate_repo}" != "$
 fi
 unset _gate_repo
 
-echo "=== Security Gate Phase (iteration ${iteration}, model: ${SECURITY_GATE_MODEL}) ==="
+echo "=== Security Gate Phase (iteration ${iteration}, model: ${SECURITY_GATE_MODEL}, max-turns: ${MAX_TURNS}) ==="
 
 # Build the system prompt
 system_prompt="$(cat "${PROMPTS_DIR}/security-gate-system.md")"

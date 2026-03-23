@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/state.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 WORKER_MODEL="${INPUT_WORKER_MODEL:-sonnet}"
-MAX_TURNS="${INPUT_MAX_TURNS_WORKER:-30}"
+MAX_TURNS="${INPUT_MAX_TURNS_WORKER:-50}"
 ALLOWED_TOOLS="${INPUT_WORKER_ALLOWED_TOOLS:-Bash,Read,Write,Edit,Glob,Grep,Task,WebFetch,WebSearch}"
 WORKER_TONE="${INPUT_WORKER_TONE:-}"
 
@@ -35,7 +35,7 @@ fi
 
 prompt+=$'\n\n'"When finished, write your summary to .ralph/work-summary.txt."
 
-echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}) ==="
+echo "=== Worker Phase (iteration ${iteration}, model: ${WORKER_MODEL}, max-turns: ${MAX_TURNS}) ==="
 
 # Read the base branch from pr-info.txt (fall back to "main")
 base_branch="main"
