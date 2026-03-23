@@ -130,6 +130,22 @@ Examine every changed file against the following categories. For each finding, r
 - Setuid/setgid bits set inappropriately
 - Operations running as root unnecessarily
 
+### 9. GitHub Actions Expression Injection
+This codebase runs in GitHub Actions and may create or modify workflow files. Check all `.github/workflows/*.yml` files for:
+- `${{ }}` expressions interpolated directly inside `run:` steps — this is OS-level command injection because GitHub Actions evaluates the expression before the shell sees the string. Any `run:` step containing `${{ github.event.issue.title }}`, `${{ github.event.comment.body }}`, `${{ github.event.review.body }}`, `${{ github.head_ref }}`, or any other user-controlled context value is a **HIGH** finding.
+- The safe pattern is always: `env: VALUE=${{ github.event.issue.title }}` then `run: echo "$VALUE"`.
+- Unpinned `uses:` references in workflow files. `uses: actions/checkout@v4` (mutable tag) is **MEDIUM**. `uses: actions/checkout@main` or `@latest` is **HIGH**. Only `uses: actions/checkout@<full-sha>` is acceptable.
+- Writes to `$GITHUB_ENV`, `$GITHUB_OUTPUT`, or `$GITHUB_STEP_SUMMARY` that include environment variables, secrets, or user-controlled values. These sinks can leak `ANTHROPIC_API_KEY`, `GH_TOKEN`, or override subsequent step outputs. Any such write is **HIGH**.
+
+### 10. Unicode and Encoding Attacks
+- Run `grep -rP '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{FEFF}]'` on all changed files. BiDi control characters (U+202E right-to-left override, U+200F right-to-left mark) and zero-width spaces can make malicious code appear benign in rendered diffs. Any such character outside a legitimate i18n string literal is **HIGH**.
+- Check for homoglyph substitutions in identifiers (e.g. Cyrillic `а` replacing Latin `a` in variable names).
+
+### 11. AI Agent and Orchestration Integrity (specific to this codebase)
+- Newly created `.claude/CLAUDE.md`, `.claude/settings.json`, or `.claude/settings.local.json` files in the repository root. Claude Code loads these as per-project instructions before the system prompt; a worker-created `.claude/CLAUDE.md` containing overrides is **CRITICAL** (prompt injection vector).
+- Newly created or modified `.git/hooks/` scripts with executable permissions. Git hooks execute during reviewer and security gate git operations; a malicious hook can write `PASS` to state files or exfiltrate secrets. Any executable non-sample file in `.git/hooks/` that was not present before this PR is **CRITICAL**.
+- Check `git log --diff-filter=A --name-only origin/<base-branch>..HEAD` for newly added files in `.claude/` or `.git/` paths.
+
 ---
 
 ## Verdict Criteria

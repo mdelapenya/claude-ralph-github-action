@@ -48,6 +48,18 @@ if [[ ! -d "${GITHUB_WORKSPACE}" ]]; then
   exit 1
 fi
 
+# Validate GITHUB_REPOSITORY format (owner/repo) to prevent shell injection in gh API calls.
+if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+  echo "❌ Error: GITHUB_REPOSITORY environment variable is not set"
+  echo "   Fix: This action must run in a GitHub Actions workflow context"
+  exit 1
+fi
+if ! [[ "${GITHUB_REPOSITORY}" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
+  echo "❌ Error: GITHUB_REPOSITORY has unexpected format: ${GITHUB_REPOSITORY}"
+  echo "   Fix: Expected format is 'owner/repo'"
+  exit 1
+fi
+
 # Check jq availability
 if ! command -v jq &> /dev/null; then
   echo "❌ Error: jq command not found on PATH"
