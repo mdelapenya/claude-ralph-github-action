@@ -177,8 +177,50 @@ create_ralph_review_slash_command_event_json() {
 EOF
 }
 
+# Write a GitHub pull_request_review event JSON for a /ralph-review slash command
+# submitted via the Approve/Comment/Request Changes review form.
+# Args: $1 = tmpdir to write into
+#       $2 = pr number (default: 999)
+#       $3 = branch name (default: "ralph/issue-42")
+#       $4 = review body (default: "/ralph-review")
+#       $5 = review state (default: "commented")
+create_ralph_review_pr_review_event_json() {
+  local tmpdir="$1"
+  local pr_number="${2:-999}"
+  local branch="${3:-ralph/issue-42}"
+  local review_body="${4:-/ralph-review}"
+  local review_state="${5:-commented}"
+
+  cat > "${tmpdir}/pr-review-event.json" <<EOF
+{
+  "action": "submitted",
+  "review": {
+    "id": 2001,
+    "user": {
+      "login": "reviewer",
+      "type": "User"
+    },
+    "body": "${review_body}",
+    "state": "${review_state}"
+  },
+  "pull_request": {
+    "number": ${pr_number},
+    "head": {
+      "ref": "${branch}"
+    },
+    "html_url": "https://github.com/test-owner/test-repo/pull/${pr_number}"
+  },
+  "repository": {
+    "full_name": "test-owner/test-repo",
+    "default_branch": "main"
+  }
+}
+EOF
+}
+
 export -f create_test_workspace
 export -f cleanup_test_workspace
 export -f setup_test_env
 export -f create_event_json
 export -f create_ralph_review_slash_command_event_json
+export -f create_ralph_review_pr_review_event_json
