@@ -26,14 +26,16 @@ jobs:
       - name: Comment on PR
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          existing="$(gh pr view "${{ github.event.pull_request.number }}" \
-            --repo "${{ github.repository }}" \
+          existing="$(gh pr view "${PR_NUMBER}" \
+            --repo "${REPO}" \
             --json comments --jq '.comments[].body' \
             | grep -c '🤖 \*\*Ralph\*\*' || true)"
           if [[ "${existing}" -eq 0 ]]; then
-            gh pr comment "${{ github.event.pull_request.number }}" \
-              --repo "${{ github.repository }}" \
+            gh pr comment "${PR_NUMBER}" \
+              --repo "${REPO}" \
               --body "🤖 **Ralph** can only work on issues, not pull requests. Please create an issue and label it with \`ralph\` instead."
           fi
 
