@@ -64,6 +64,7 @@ fi
 cli_args=(
   -p
   --model "${REVIEWER_MODEL}"
+  --output-format json
   --allowedTools "${REVIEWER_TOOLS}"
   --append-system-prompt "${system_prompt}"
 )
@@ -75,8 +76,13 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the reviewer system prompt
+# Always capture and log the JSON output
 reviewer_exit=0
-claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
+reviewer_output=""
+reviewer_output="$(claude "${cli_args[@]}" "${prompt}" 2>&1)" || reviewer_exit=$?
+
+echo "${reviewer_output}"
+echo "${reviewer_output}" > "${RALPH_DIR}/reviewer-output.json"
 
 if [[ ${reviewer_exit} -ne 0 ]]; then
   echo "ERROR: Reviewer Claude CLI exited with code ${reviewer_exit}"

@@ -76,6 +76,7 @@ fi
 cli_args=(
   -p
   --model "${WORKER_MODEL}"
+  --output-format json
   --allowedTools "${ALLOWED_TOOLS}"
   --append-system-prompt "${system_prompt}"
 )
@@ -87,8 +88,13 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the worker system prompt
+# Always capture and log the JSON output
 worker_exit=0
-claude "${cli_args[@]}" "${prompt}" || worker_exit=$?
+worker_output=""
+worker_output="$(claude "${cli_args[@]}" "${prompt}" 2>&1)" || worker_exit=$?
+
+echo "${worker_output}"
+echo "${worker_output}" > "${RALPH_DIR}/worker-output.json"
 
 if [[ ${worker_exit} -ne 0 ]]; then
   echo "ERROR: Worker Claude CLI exited with code ${worker_exit}"

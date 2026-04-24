@@ -64,6 +64,7 @@ fi
 cli_args=(
   -p
   --model "${SECURITY_GATE_MODEL}"
+  --output-format json
   --allowedTools "${SECURITY_GATE_TOOLS}"
   --append-system-prompt "${system_prompt}"
 )
@@ -75,8 +76,13 @@ if [[ "${RALPH_VERBOSE:-false}" == "true" ]]; then
 fi
 
 # Invoke Claude CLI in print mode with the security gate system prompt
+# Always capture and log the JSON output
 gate_exit=0
-claude "${cli_args[@]}" "${prompt}" || gate_exit=$?
+gate_output=""
+gate_output="$(claude "${cli_args[@]}" "${prompt}" 2>&1)" || gate_exit=$?
+
+echo "${gate_output}"
+echo "${gate_output}" > "${RALPH_DIR}/security-gate-output.json"
 
 if [[ ${gate_exit} -ne 0 ]]; then
   echo "ERROR: Security gate Claude CLI exited with code ${gate_exit}"
