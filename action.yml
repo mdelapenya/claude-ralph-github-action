@@ -102,6 +102,10 @@ inputs:
     description: 'Enable Docker sbx sandboxing for Claude CLI execution. When enabled, all Claude CLI calls run inside a Docker sandbox.'
     required: false
     default: 'false'
+  sbx_version:
+    description: 'Pinned version of Docker sbx to install (e.g., "v0.0.3"). Defaults to a known-good version.'
+    required: false
+    default: 'v0.0.3'
   sbx_network_policy:
     description: 'Default network policy for the sbx sandbox: "deny-all", "allow-all", or "balanced"'
     required: false
@@ -151,6 +155,7 @@ runs:
     INPUT_SECURITY_GATE_TOOLS: ${{ inputs.security_gate_tools }}
     INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}
     INPUT_SBX_ENABLED: ${{ inputs.sbx_enabled }}
+    INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
     INPUT_SBX_NETWORK_POLICY: ${{ inputs.sbx_network_policy }}
     INPUT_DOCKER_HUB_USER: ${{ inputs.docker_hub_user }}
     INPUT_DOCKER_HUB_TOKEN: ${{ inputs.docker_hub_token }}

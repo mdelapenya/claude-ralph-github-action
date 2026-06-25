@@ -43,17 +43,33 @@ echo "=== sbx Setup ==="
 # --- Install sbx ---
 echo "Installing sbx..."
 sbx_tmp="$(mktemp -d)"
-# Fetch the latest release version tag from GitHub API
-SBX_VERSION="$(curl -fsSL "https://api.github.com/repos/docker/sbx-releases/releases/latest" | jq -r '.tag_name')"
-if [[ -z "${SBX_VERSION}" || "${SBX_VERSION}" == "null" ]]; then
-  echo "ERROR: failed to determine latest sbx release version"
+# Use the pinned version from the action input (never fetch latest dynamically)
+SBX_VERSION="${INPUT_SBX_VERSION:-v0.0.3}"
+echo "  Version: ${SBX_VERSION}"
+
+sbx_tarball="${sbx_tmp}/docker-sbx.tar.gz"
+curl -fsSL "https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz" \
+  -o "${sbx_tarball}"
+
+# Verify tarball integrity via SHA-256 checksum
+sbx_checksum_url="https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz.sha256"
+expected_checksum="$(curl -fsSL "${sbx_checksum_url}" | awk '{print $1}')"
+if [[ -z "${expected_checksum}" ]]; then
+  echo "ERROR: failed to fetch SHA-256 checksum for sbx ${SBX_VERSION}"
   rm -rf "${sbx_tmp}"
   exit 1
 fi
-echo "  Version: ${SBX_VERSION}"
-curl -fsSL "https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz" \
-  -o "${sbx_tmp}/docker-sbx.tar.gz"
-tar -xzf "${sbx_tmp}/docker-sbx.tar.gz" -C "${sbx_tmp}"
+actual_checksum="$(sha256sum "${sbx_tarball}" | awk '{print $1}')"
+if [[ "${actual_checksum}" != "${expected_checksum}" ]]; then
+  echo "ERROR: SHA-256 checksum mismatch for sbx tarball"
+  echo "  Expected: ${expected_checksum}"
+  echo "  Actual:   ${actual_checksum}"
+  rm -rf "${sbx_tmp}"
+  exit 1
+fi
+echo "  Checksum verified: ${actual_checksum}"
+
+tar -xzf "${sbx_tarball}" -C "${sbx_tmp}"
 
 SBX_PREFIX="${HOME}/.docker/sbx"
 sudo PREFIX="${SBX_PREFIX}" "${sbx_tmp}/install.sh"
@@ -126,8 +142,11 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   {
     echo "SBX_SANDBOX_NAME=${SBX_SANDBOX_NAME}"
     echo "SBX_APP_NAME=${SBX_APP_NAME}"
-    echo "PATH=${SBX_PREFIX}/bin:${PATH}"
   } >> "${GITHUB_ENV}"
+fi
+# Use GITHUB_PATH (the idiomatic way) to prepend sbx bin to PATH across steps
+if [[ -n "${GITHUB_PATH:-}" ]]; then
+  echo "${SBX_PREFIX}/bin" >> "${GITHUB_PATH}"
 fi
 
 # Write sandbox info so other scripts can source it
