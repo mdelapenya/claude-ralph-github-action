@@ -44,7 +44,7 @@ echo "=== sbx Setup ==="
 echo "Installing sbx..."
 sbx_tmp="$(mktemp -d)"
 # Use the pinned version from the action input (never fetch latest dynamically)
-SBX_VERSION="${INPUT_SBX_VERSION:-v0.0.3}"
+SBX_VERSION="${INPUT_SBX_VERSION:-v0.33.0}"
 echo "  Version: ${SBX_VERSION}"
 
 sbx_tarball="${sbx_tmp}/docker-sbx.tar.gz"
