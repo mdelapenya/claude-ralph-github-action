@@ -81,7 +81,7 @@ echo "  sbx version: $(sbx version 2>&1 || echo 'unknown')"
 # --- Set up D-Bus and gnome-keyring for headless credential storage ---
 echo "Setting up Secret Service for sbx login..."
 sudo apt-get update -qq 2>/dev/null
-sudo apt-get install -y -qq gnome-keyring dbus 2>/dev/null
+sudo apt-get install -y -qq gnome-keyring dbus libglib2.0-bin 2>/dev/null
 
 mkdir -p "${HOME}/.local/share/keyrings"
 cat > "${HOME}/.local/share/keyrings/login.keyring" <<'KEYRING'
