@@ -72,7 +72,7 @@ echo "  Checksum verified: ${actual_checksum}"
 tar -xzf "${sbx_tarball}" -C "${sbx_tmp}"
 
 SBX_PREFIX="${HOME}/.docker/sbx"
-sudo PREFIX="${SBX_PREFIX}" "${sbx_tmp}/install.sh"
+PREFIX="${SBX_PREFIX}" "${sbx_tmp}/install.sh"
 export PATH="${SBX_PREFIX}/bin:${PATH}"
 rm -rf "${sbx_tmp}"
 
@@ -80,8 +80,8 @@ echo "  sbx version: $(sbx version 2>&1 || echo 'unknown')"
 
 # --- Set up D-Bus and gnome-keyring for headless credential storage ---
 echo "Setting up Secret Service for sbx login..."
-sudo apt-get update -qq 2>/dev/null
-sudo apt-get install -y -qq gnome-keyring dbus libglib2.0-bin 2>/dev/null
+apt-get update -qq 2>/dev/null
+apt-get install -y -qq gnome-keyring dbus libglib2.0-bin 2>/dev/null
 
 mkdir -p "${HOME}/.local/share/keyrings"
 cat > "${HOME}/.local/share/keyrings/login.keyring" <<'KEYRING'

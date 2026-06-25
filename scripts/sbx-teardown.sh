@@ -28,6 +28,6 @@ sbx rm "${SBX_SANDBOX_NAME}" 2>/dev/null || true
 
 # Logout from Docker Hub
 echo "Logging out from sbx..."
-sbx logout --yes 2>/dev/null || true
+sbx --app-name "${SBX_APP_NAME}" logout --yes 2>/dev/null || true
 
 echo "=== sbx Teardown Complete ==="

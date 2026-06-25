@@ -23,6 +23,7 @@ setup_mock_binaries() {
 
   _create_mock_claude
   _create_mock_gh
+  _create_mock_sbx
 }
 
 # Restore original PATH and clean up
@@ -248,7 +249,60 @@ MOCK_GH
   chmod +x "${_MOCK_BIN_DIR}/gh"
 }
 
+# Create the mock sbx binary
+_create_mock_sbx() {
+  cat > "${_MOCK_BIN_DIR}/sbx" <<'MOCK_SBX'
+#!/usr/bin/env bash
+# Mock sbx CLI for integration tests
+#
+# Supports: exec, version, create, stop, rm, login, logout, policy
+
+set -euo pipefail
+
+case "${1:-}" in
+  exec)
+    # sbx exec <sandbox-name> <command> [args...]
+    # Skip the sandbox name and run the command directly
+    shift 2
+    exec "$@"
+    ;;
+  version)
+    echo "mock-sbx v0.33.0"
+    ;;
+  create|stop|rm)
+    echo "mock sbx ${1}: ok"
+    ;;
+  --app-name)
+    # Handle --app-name <name> <subcommand> [args...]
+    shift 2  # skip --app-name and the app name value
+    case "${1:-}" in
+      login)
+        # Consume stdin (password) silently
+        cat > /dev/null
+        echo "mock sbx login: ok"
+        ;;
+      logout)
+        echo "mock sbx logout: ok"
+        ;;
+      policy)
+        echo "mock sbx policy: ok"
+        ;;
+      *)
+        echo "mock sbx --app-name: unknown subcommand ${1:-}"
+        ;;
+    esac
+    ;;
+  *)
+    echo "mock sbx: unknown command ${1:-}"
+    ;;
+esac
+MOCK_SBX
+
+  chmod +x "${_MOCK_BIN_DIR}/sbx"
+}
+
 export -f setup_mock_binaries
 export -f teardown_mock_binaries
 export -f _create_mock_claude
 export -f _create_mock_gh
+export -f _create_mock_sbx
