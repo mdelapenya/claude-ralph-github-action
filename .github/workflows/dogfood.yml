@@ -82,6 +82,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GH_PAT_TOKEN }}
+          docker_hub_user: ${{ secrets.DOCKER_HUB_USER }}
+          docker_hub_token: ${{ secrets.DOCKER_HUB_TOKEN }}
           ralph_review_command: ${{ env.RALPH_REVIEW_COMMAND }}
           reviewer_model: opus
           reviewer_tone: |
