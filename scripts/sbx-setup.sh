@@ -126,6 +126,7 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   {
     echo "SBX_SANDBOX_NAME=${SBX_SANDBOX_NAME}"
     echo "SBX_APP_NAME=${SBX_APP_NAME}"
+    echo "PATH=${SBX_PREFIX}/bin:${PATH}"
   } >> "${GITHUB_ENV}"
 fi
 
