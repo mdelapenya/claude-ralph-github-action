@@ -8,6 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/state.sh"
+source "${SCRIPT_DIR}/sbx-exec.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 WORKER_MODEL="${INPUT_WORKER_MODEL:-sonnet}"
@@ -88,7 +89,7 @@ fi
 
 # Invoke Claude CLI in print mode with the worker system prompt
 worker_exit=0
-claude "${cli_args[@]}" "${prompt}" || worker_exit=$?
+sbx_claude "${cli_args[@]}" "${prompt}" || worker_exit=$?
 
 if [[ ${worker_exit} -ne 0 ]]; then
   echo "ERROR: Worker Claude CLI exited with code ${worker_exit}"

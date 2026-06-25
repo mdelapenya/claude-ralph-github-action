@@ -7,6 +7,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/state.sh"
+source "${SCRIPT_DIR}/sbx-exec.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 REVIEWER_MODEL="${INPUT_REVIEWER_MODEL:-sonnet}"
@@ -76,7 +77,7 @@ fi
 
 # Invoke Claude CLI in print mode with the reviewer system prompt
 reviewer_exit=0
-claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
+sbx_claude "${cli_args[@]}" "${prompt}" || reviewer_exit=$?
 
 if [[ ${reviewer_exit} -ne 0 ]]; then
   echo "ERROR: Reviewer Claude CLI exited with code ${reviewer_exit}"

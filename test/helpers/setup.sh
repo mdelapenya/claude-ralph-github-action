@@ -78,6 +78,8 @@ setup_test_env() {
   export INPUT_SECURITY_GATE_TOOLS="${INPUT_SECURITY_GATE_TOOLS:-Bash,Read,Write,Glob,Grep}"
   export INPUT_SECURITY_GATE_TONE="${INPUT_SECURITY_GATE_TONE:-}"
   export RALPH_VERBOSE="${RALPH_VERBOSE:-false}"
+  export INPUT_SBX_ENABLED="${INPUT_SBX_ENABLED:-false}"
+  export INPUT_SBX_NETWORK_POLICY="${INPUT_SBX_NETWORK_POLICY:-balanced}"
 
   # Create event JSON
   create_event_json "${tmpdir}"

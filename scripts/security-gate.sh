@@ -10,6 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/state.sh"
+source "${SCRIPT_DIR}/sbx-exec.sh"
 
 PROMPTS_DIR="${PROMPTS_DIR:-/prompts}"
 SECURITY_GATE_MODEL="${INPUT_SECURITY_GATE_MODEL:-sonnet}"
@@ -76,7 +77,7 @@ fi
 
 # Invoke Claude CLI in print mode with the security gate system prompt
 gate_exit=0
-claude "${cli_args[@]}" "${prompt}" || gate_exit=$?
+sbx_claude "${cli_args[@]}" "${prompt}" || gate_exit=$?
 
 if [[ ${gate_exit} -ne 0 ]]; then
   echo "ERROR: Security gate Claude CLI exited with code ${gate_exit}"

@@ -364,6 +364,13 @@ fi
 # --- Comment on issue to indicate start (delegated to reviewer) ---
 # Initial comment now posted by the reviewer agent on first iteration
 
+# --- Set up sbx sandbox if enabled ---
+if [[ "${INPUT_SBX_ENABLED:-false}" == "true" ]]; then
+  echo ""
+  echo "🐳 === Setting up sbx sandbox ==="
+  "${SCRIPTS_DIR}/sbx-setup.sh"
+fi
+
 # --- Run the Ralph loop ---
 echo ""
 echo "🔁 === Starting Ralph Loop ==="
@@ -401,6 +408,13 @@ elif [[ -f ".ralph/pr-url.txt" ]]; then
   if [[ -n "${pr_url_or_sha}" ]]; then
     echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
+fi
+
+# --- Tear down sbx sandbox if enabled ---
+if [[ "${INPUT_SBX_ENABLED:-false}" == "true" ]]; then
+  echo ""
+  echo "🐳 === Tearing down sbx sandbox ==="
+  "${SCRIPTS_DIR}/sbx-teardown.sh" || echo "⚠️  sbx teardown failed (non-fatal)"
 fi
 
 # --- Write GitHub Step Summary ---
