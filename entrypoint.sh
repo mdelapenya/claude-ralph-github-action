@@ -364,6 +364,19 @@ fi
 # --- Comment on issue to indicate start (delegated to reviewer) ---
 # Initial comment now posted by the reviewer agent on first iteration
 
+# --- Set up sbx sandbox if enabled ---
+if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
+  echo ""
+  echo "🐳 === Setting up sbx sandbox ==="
+  "${SCRIPTS_DIR}/sbx-setup.sh"
+  # sbx-setup.sh runs as a subprocess, so its PATH export doesn't propagate.
+  # Read the install path from .ralph/sbx-info.txt and add it to PATH here.
+  if [[ -f "${RALPH_DIR}/sbx-info.txt" ]]; then
+    SBX_BIN="$(grep '^sbx_bin=' "${RALPH_DIR}/sbx-info.txt" | cut -d= -f2)"
+    [[ -n "${SBX_BIN}" ]] && export PATH="${SBX_BIN}:${PATH}"
+  fi
+fi
+
 # --- Run the Ralph loop ---
 echo ""
 echo "🔁 === Starting Ralph Loop ==="
@@ -401,6 +414,13 @@ elif [[ -f ".ralph/pr-url.txt" ]]; then
   if [[ -n "${pr_url_or_sha}" ]]; then
     echo "✅ PR created/updated by reviewer: ${pr_url_or_sha}"
   fi
+fi
+
+# --- Tear down sbx sandbox if enabled ---
+if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
+  echo ""
+  echo "🐳 === Tearing down sbx sandbox ==="
+  "${SCRIPTS_DIR}/sbx-teardown.sh" || echo "⚠️  sbx teardown failed (non-fatal)"
 fi
 
 # --- Write GitHub Step Summary ---

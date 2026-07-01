@@ -98,6 +98,26 @@ inputs:
     description: 'Personality/tone for the security gate agent (e.g., "Agent Smith", "HAL 9000"). If set, the security gate will respond with this personality.'
     required: false
     default: ''
+  sbx_enabled:
+    description: 'Enable Docker sbx sandboxing for Claude CLI execution. When enabled, all Claude CLI calls run inside a Docker sandbox. Default is true'
+    required: false
+    default: 'true'
+  sbx_version:
+    description: 'Pinned version of Docker sbx to install (e.g., "v0.33.0"). Defaults to a known-good version.'
+    required: false
+    default: 'v0.33.0'
+  sbx_network_policy:
+    description: 'Default network policy for the sbx sandbox: "deny-all", "allow-all", or "balanced"'
+    required: false
+    default: 'balanced'
+  docker_hub_user:
+    description: 'Docker Hub username for sbx login. Required when sbx_enabled is true. Must be kept as a secret.'
+    required: false
+    default: ''
+  docker_hub_token:
+    description: 'Docker Hub token for sbx login. Required when sbx_enabled is true. Must be kept as a secret.'
+    required: false
+    default: ''
 
 outputs:
   pr_url:
@@ -134,3 +154,8 @@ runs:
     INPUT_MAX_TURNS_SECURITY_GATE: ${{ inputs.max_turns_security_gate }}
     INPUT_SECURITY_GATE_TOOLS: ${{ inputs.security_gate_tools }}
     INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}
+    INPUT_SBX_ENABLED: ${{ inputs.sbx_enabled }}
+    INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
+    INPUT_SBX_NETWORK_POLICY: ${{ inputs.sbx_network_policy }}
+    INPUT_DOCKER_HUB_USER: ${{ inputs.docker_hub_user }}
+    INPUT_DOCKER_HUB_TOKEN: ${{ inputs.docker_hub_token }}

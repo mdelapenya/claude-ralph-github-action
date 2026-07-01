@@ -30,6 +30,10 @@ printf "  │  %-28s %-30s│\n" "reviewer max_turns:"    "${INPUT_MAX_TURNS_REV
 printf "  │  %-28s %-30s│\n" "security_gate_enabled:" "${INPUT_SECURITY_GATE_ENABLED:-true}"
 printf "  │  %-28s %-30s│\n" "security gate model:"   "${INPUT_SECURITY_GATE_MODEL:-sonnet}"
 printf "  │  %-28s %-30s│\n" "security gate max_turns:" "${INPUT_MAX_TURNS_SECURITY_GATE:-unlimited}"
+printf "  │  %-28s %-30s│\n" "sbx_enabled:"             "${INPUT_SBX_ENABLED:-true}"
+if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
+printf "  │  %-28s %-30s│\n" "sbx_network_policy:"      "${INPUT_SBX_NETWORK_POLICY:-balanced}"
+fi
 echo "  └─────────────────────────────────────────────────────────────┘"
 echo ""
 state_log_audit "LOOP_START" "max=${MAX_ITERATIONS}"
