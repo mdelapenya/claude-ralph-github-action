@@ -16,7 +16,6 @@
 set -euo pipefail
 
 SBX_SANDBOX_NAME="ralph-sandbox"
-SBX_APP_NAME="claude-ralph"
 SBX_NETWORK_POLICY="${INPUT_SBX_NETWORK_POLICY:-balanced}"
 
 # This action runs on the runner host (composite action). System package installs
@@ -124,13 +123,13 @@ done
 echo "Logging in to Docker Hub via sbx..."
 user_clean="$(printf '%s' "${INPUT_DOCKER_HUB_USER}" | tr -d '[:space:]')"
 token_clean="$(printf '%s' "${INPUT_DOCKER_HUB_TOKEN}" | tr -d '[:space:]')"
-printf '%s' "${token_clean}" | sbx --app-name "${SBX_APP_NAME}" login \
+printf '%s' "${token_clean}" | sbx login \
   --username "${user_clean}" --password-stdin
 echo "  Docker Hub login successful"
 
 # --- Set the default network policy ---
 echo "Setting sbx network policy: ${SBX_NETWORK_POLICY}"
-sbx --app-name "${SBX_APP_NAME}" policy set-default "${SBX_NETWORK_POLICY}"
+sbx policy set-default "${SBX_NETWORK_POLICY}"
 
 # --- Create the sandbox ---
 echo "Creating sbx sandbox: ${SBX_SANDBOX_NAME}"
@@ -139,14 +138,10 @@ echo "  Sandbox created successfully"
 
 # Export variables for downstream scripts
 export SBX_SANDBOX_NAME
-export SBX_APP_NAME
 
 # Persist SBX env vars for other scripts in the same shell session
 if [[ -n "${GITHUB_ENV:-}" ]]; then
-  {
-    echo "SBX_SANDBOX_NAME=${SBX_SANDBOX_NAME}"
-    echo "SBX_APP_NAME=${SBX_APP_NAME}"
-  } >> "${GITHUB_ENV}"
+  echo "SBX_SANDBOX_NAME=${SBX_SANDBOX_NAME}" >> "${GITHUB_ENV}"
 fi
 
 # Write sandbox info so other scripts can source it. sbx is already on PATH
@@ -154,7 +149,6 @@ fi
 {
   echo "sbx_active=true"
   echo "sandbox_name=${SBX_SANDBOX_NAME}"
-  echo "app_name=${SBX_APP_NAME}"
   echo "network_policy=${SBX_NETWORK_POLICY}"
 } > "${SBX_INFO_FILE}"
 

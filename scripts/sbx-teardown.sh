@@ -6,7 +6,6 @@
 set -euo pipefail
 
 SBX_SANDBOX_NAME="${SBX_SANDBOX_NAME:-ralph-sandbox}"
-SBX_APP_NAME="${SBX_APP_NAME:-claude-ralph}"
 
 # Nothing to tear down if sbx never activated (e.g. degraded on a KVM-less
 # runner). sbx itself is already on PATH (added by the install step).
@@ -31,6 +30,6 @@ sbx rm "${SBX_SANDBOX_NAME}" 2>/dev/null || true
 
 # Logout from Docker Hub
 echo "Logging out from sbx..."
-sbx --app-name "${SBX_APP_NAME}" logout --yes 2>/dev/null || true
+sbx logout --yes 2>/dev/null || true
 
 echo "=== sbx Teardown Complete ==="
