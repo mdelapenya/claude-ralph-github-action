@@ -13,6 +13,14 @@
 
 set -euo pipefail
 
+# install.sh writes an AppArmor profile to /etc/apparmor.d/, which needs root.
+# On GitHub-hosted runners the runner user has passwordless sudo; fall back to no
+# sudo when already root or when sudo is unavailable.
+SUDO=""
+if [[ "${EUID:-$(id -u)}" -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+fi
+
 # Known-good version and its tarball checksum. The docker/sbx-releases project
 # does not publish a .sha256 sidecar next to the release asset, so we pin the
 # checksum here for the default version. When a different version is pinned via
@@ -61,8 +69,10 @@ echo "  Checksum verified: ${actual_checksum}"
 # install.sh, the sbx binary, and supporting files.
 tar -xzf "${sbx_tarball}" -C "${sbx_tmp}"
 
+# Install as root so install.sh can write the AppArmor profile to /etc/apparmor.d/.
+# `env PREFIX=...` sets the variable for the (possibly sudo-elevated) install.sh.
 SBX_PREFIX="${HOME}/.docker/sbx"
-PREFIX="${SBX_PREFIX}" "${sbx_tmp}/docker-sbx/install.sh"
+${SUDO} env PREFIX="${SBX_PREFIX}" "${sbx_tmp}/docker-sbx/install.sh"
 export PATH="${SBX_PREFIX}/bin:${PATH}"
 rm -rf "${sbx_tmp}"
 

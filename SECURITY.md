@@ -18,7 +18,7 @@ Report vulnerabilities by emailing **mdelapenya@gmail.com** with the subject lin
 
 This action runs code in your GitHub Actions runner with access to the secrets you provide (`ANTHROPIC_API_KEY`, `github_token`). If this repository were compromised — through a stolen maintainer credential, a malicious PR, or a Docker Hub account takeover — a consumer pinned to a mutable reference (`@v1`, `@main`, `@latest`) would automatically run the attacker's code on their next workflow execution.
 
-The Docker image used by the action (`docker://mdelapenya/claude-ralph-github-action:latest`) faces the same risk: `latest` resolves at runtime and can be silently swapped.
+The action is a composite action that installs its runtime dependencies on the runner. These are pinned: the Docker sbx binary is downloaded at a fixed release tag and verified against a pinned SHA-256 checksum (`sbx_version` / `sbx_sha256`), and the Claude Code CLI is installed at a pinned npm version (`claude_code_version`). Overriding these inputs with mutable or unverified values reintroduces supply-chain risk.
 
 ### How to Protect Yourself
 
