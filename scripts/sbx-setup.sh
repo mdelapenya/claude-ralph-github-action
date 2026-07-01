@@ -19,6 +19,13 @@ SBX_SANDBOX_NAME="ralph-sandbox"
 SBX_APP_NAME="claude-ralph"
 SBX_NETWORK_POLICY="${INPUT_SBX_NETWORK_POLICY:-balanced}"
 
+# Known-good version and its tarball checksum. The docker/sbx-releases project
+# does not publish a .sha256 sidecar next to the release asset, so we pin the
+# checksum here for the default version. When a different version is pinned via
+# INPUT_SBX_VERSION, the caller must supply INPUT_SBX_SHA256 to keep verification.
+DEFAULT_SBX_VERSION="v0.33.0"
+DEFAULT_SBX_SHA256="decc0f69603e6c4bdd64e39e2a94636beb10aeff35dd3d44e07435ee6ddbf29d"
+
 # Validate required credentials
 if [[ -z "${INPUT_DOCKER_HUB_USER:-}" ]]; then
   echo "ERROR: docker_hub_user input is required when sbx_enabled is true"
@@ -44,21 +51,29 @@ echo "=== sbx Setup ==="
 echo "Installing sbx..."
 sbx_tmp="$(mktemp -d)"
 # Use the pinned version from the action input (never fetch latest dynamically)
-SBX_VERSION="${INPUT_SBX_VERSION:-v0.33.0}"
+SBX_VERSION="${INPUT_SBX_VERSION:-${DEFAULT_SBX_VERSION}}"
 echo "  Version: ${SBX_VERSION}"
+
+# Resolve the expected checksum. The release provides no .sha256 sidecar, so we
+# rely on a pinned value: the caller-supplied INPUT_SBX_SHA256, or the built-in
+# default when running the default version. Refuse to proceed unverified.
+expected_checksum="${INPUT_SBX_SHA256:-}"
+if [[ -z "${expected_checksum}" ]]; then
+  if [[ "${SBX_VERSION}" == "${DEFAULT_SBX_VERSION}" ]]; then
+    expected_checksum="${DEFAULT_SBX_SHA256}"
+  else
+    echo "ERROR: no SHA-256 pinned for sbx ${SBX_VERSION}"
+    echo "  Set the sbx_sha256 input to the tarball checksum when overriding sbx_version."
+    rm -rf "${sbx_tmp}"
+    exit 1
+  fi
+fi
 
 sbx_tarball="${sbx_tmp}/docker-sbx.tar.gz"
 curl -fsSL "https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz" \
   -o "${sbx_tarball}"
 
-# Verify tarball integrity via SHA-256 checksum
-sbx_checksum_url="https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz.sha256"
-expected_checksum="$(curl -fsSL "${sbx_checksum_url}" | awk '{print $1}')"
-if [[ -z "${expected_checksum}" ]]; then
-  echo "ERROR: failed to fetch SHA-256 checksum for sbx ${SBX_VERSION}"
-  rm -rf "${sbx_tmp}"
-  exit 1
-fi
+# Verify tarball integrity against the pinned SHA-256 checksum
 actual_checksum="$(sha256sum "${sbx_tarball}" | awk '{print $1}')"
 if [[ "${actual_checksum}" != "${expected_checksum}" ]]; then
   echo "ERROR: SHA-256 checksum mismatch for sbx tarball"

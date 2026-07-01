@@ -106,6 +106,10 @@ inputs:
     description: 'Pinned version of Docker sbx to install (e.g., "v0.33.0"). Defaults to a known-good version.'
     required: false
     default: 'v0.33.0'
+  sbx_sha256:
+    description: 'Expected SHA-256 of the sbx linux tarball. The docker/sbx-releases project does not publish a .sha256 sidecar, so the checksum for the default version is pinned in the action. Set this when overriding sbx_version to keep tamper-detection.'
+    required: false
+    default: ''
   sbx_network_policy:
     description: 'Default network policy for the sbx sandbox: "deny-all", "allow-all", or "balanced"'
     required: false
@@ -156,6 +160,7 @@ runs:
     INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}
     INPUT_SBX_ENABLED: ${{ inputs.sbx_enabled }}
     INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
+    INPUT_SBX_SHA256: ${{ inputs.sbx_sha256 }}
     INPUT_SBX_NETWORK_POLICY: ${{ inputs.sbx_network_policy }}
     INPUT_DOCKER_HUB_USER: ${{ inputs.docker_hub_user }}
     INPUT_DOCKER_HUB_TOKEN: ${{ inputs.docker_hub_token }}
