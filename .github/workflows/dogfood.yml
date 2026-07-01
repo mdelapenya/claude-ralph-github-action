@@ -60,17 +60,6 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT_TOKEN }}
 
-      - name: Restore Docker image cache
-        id: docker-cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image.tar
-          key: docker-ralph-${{ hashFiles('Dockerfile', 'entrypoint.sh', 'scripts/**', 'prompts/**') }}
-
-      - name: Load cached Docker image
-        if: steps.docker-cache.outputs.cache-hit == 'true'
-        run: docker load -i /tmp/docker-image.tar
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -119,9 +108,3 @@ jobs:
             - Be confident (overconfident) about your coding abilities
             - Keep it fun but still professional enough to get work done
             Your work summary should reflect this personality while still being informative.
-
-      - name: Save Docker image to cache
-        if: steps.docker-cache.outputs.cache-hit != 'true'
-        run: |
-          docker build -t claude-ralph-cache .
-          docker save -o /tmp/docker-image.tar claude-ralph-cache

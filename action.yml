@@ -103,9 +103,9 @@ inputs:
     required: false
     default: 'true'
   sbx_version:
-    description: 'Pinned version of Docker sbx to install (e.g., "v0.33.0"). Defaults to a known-good version.'
+    description: 'Pinned version of Docker sbx to install (e.g., "v0.34.0"). Defaults to a known-good version.'
     required: false
-    default: 'v0.33.0'
+    default: 'v0.34.0'
   sbx_sha256:
     description: 'Expected SHA-256 of the sbx linux tarball. The docker/sbx-releases project does not publish a .sha256 sidecar, so the checksum for the default version is pinned in the action. Set this when overriding sbx_version to keep tamper-detection.'
     required: false
@@ -122,6 +122,10 @@ inputs:
     description: 'Docker Hub token for sbx login. Required when sbx_enabled is true. Must be kept as a secret.'
     required: false
     default: ''
+  claude_code_version:
+    description: 'Version of the @anthropic-ai/claude-code npm package to install on the runner. Pinned for reproducibility; bump deliberately.'
+    required: false
+    default: '2.1.81'
 
 outputs:
   pr_url:
@@ -132,35 +136,87 @@ outputs:
     description: 'Final status: SHIPPED, MAX_ITERATIONS, or ERROR'
 
 runs:
-  using: 'docker'
-  image: 'docker://mdelapenya/claude-ralph-github-action:latest'
-  env:
-    ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
-    GH_TOKEN: ${{ inputs.github_token }}
-    INPUT_WORKER_MODEL: ${{ inputs.worker_model }}
-    INPUT_REVIEWER_MODEL: ${{ inputs.reviewer_model }}
-    INPUT_MAX_ITERATIONS: ${{ inputs.max_iterations }}
-    INPUT_MAX_TURNS_WORKER: ${{ inputs.max_turns_worker }}
-    INPUT_MAX_TURNS_REVIEWER: ${{ inputs.max_turns_reviewer }}
-    INPUT_TRIGGER_LABEL: ${{ inputs.trigger_label }}
-    INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
-    INPUT_WORKER_ALLOWED_TOOLS: ${{ inputs.worker_allowed_tools }}
-    INPUT_REVIEWER_TOOLS: ${{ inputs.reviewer_tools }}
-    INPUT_MERGE_STRATEGY: ${{ inputs.merge_strategy }}
-    INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
-    INPUT_WORKER_TONE: ${{ inputs.worker_tone }}
-    INPUT_REVIEWER_TONE: ${{ inputs.reviewer_tone }}
-    INPUT_COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
-    INPUT_COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
-    INPUT_RALPH_REVIEW_COMMAND: ${{ inputs.ralph_review_command }}
-    INPUT_SECURITY_GATE_ENABLED: ${{ inputs.security_gate_enabled }}
-    INPUT_SECURITY_GATE_MODEL: ${{ inputs.security_gate_model }}
-    INPUT_MAX_TURNS_SECURITY_GATE: ${{ inputs.max_turns_security_gate }}
-    INPUT_SECURITY_GATE_TOOLS: ${{ inputs.security_gate_tools }}
-    INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}
-    INPUT_SBX_ENABLED: ${{ inputs.sbx_enabled }}
-    INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
-    INPUT_SBX_SHA256: ${{ inputs.sbx_sha256 }}
-    INPUT_SBX_NETWORK_POLICY: ${{ inputs.sbx_network_policy }}
-    INPUT_DOCKER_HUB_USER: ${{ inputs.docker_hub_user }}
-    INPUT_DOCKER_HUB_TOKEN: ${{ inputs.docker_hub_token }}
+  using: 'composite'
+  steps:
+    # sbx runs a KVM micro-VM, which needs /dev/kvm on the runner host. A Docker
+    # container action cannot receive the device, so this action runs on the host.
+    # /dev/kvm exists on GitHub-hosted Linux runners; this grants access to it.
+    # If a Linux runner genuinely lacks KVM, this fails fast with a clear message.
+    - name: Set up KVM for sbx
+      if: ${{ runner.os == 'Linux' && inputs.sbx_enabled == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ! -e /dev/kvm ]]; then
+          echo "❌ /dev/kvm not found — sbx needs a runner with KVM (nested virtualization)."
+          echo "   Use a GitHub-hosted Linux runner, or set sbx_enabled: false."
+          exit 1
+        fi
+        echo "🔧 Granting access to /dev/kvm for sbx"
+        sudo chmod 666 /dev/kvm
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+        ls -la /dev/kvm
+
+    # Download, checksum-verify, and install the sbx binary onto the runner, and
+    # put it on PATH for later steps. Kept as its own visible step (backed by
+    # scripts/sbx-install.sh) so the install/pinning logic is easy to audit.
+    - name: Install sbx
+      if: ${{ runner.os == 'Linux' && inputs.sbx_enabled == 'true' }}
+      shell: bash
+      run: ${{ github.action_path }}/scripts/sbx-install.sh
+      env:
+        INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
+        INPUT_SBX_SHA256: ${{ inputs.sbx_sha256 }}
+
+    # Claude Code only needs to be on the host for the non-sandboxed path (sbx
+    # disabled, or a non-Linux runner). When sbx is active Claude is provided by
+    # the sbx "claude" kit and runs via `sbx exec`, so this step is skipped.
+    - name: Install Claude Code CLI (non-sandboxed path)
+      if: ${{ runner.os != 'Linux' || inputs.sbx_enabled != 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v claude >/dev/null 2>&1; then
+          echo "✅ Claude Code CLI already present: $(claude --version 2>&1 || true)"
+        else
+          echo "📦 Installing @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+          npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+        fi
+      env:
+        CLAUDE_CODE_VERSION: ${{ inputs.claude_code_version }}
+
+    - name: Run Ralph loop
+      shell: bash
+      run: ${{ github.action_path }}/entrypoint.sh
+      env:
+        SCRIPTS_DIR: ${{ github.action_path }}/scripts
+        PROMPTS_DIR: ${{ github.action_path }}/prompts
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        GH_TOKEN: ${{ inputs.github_token }}
+        INPUT_WORKER_MODEL: ${{ inputs.worker_model }}
+        INPUT_REVIEWER_MODEL: ${{ inputs.reviewer_model }}
+        INPUT_MAX_ITERATIONS: ${{ inputs.max_iterations }}
+        INPUT_MAX_TURNS_WORKER: ${{ inputs.max_turns_worker }}
+        INPUT_MAX_TURNS_REVIEWER: ${{ inputs.max_turns_reviewer }}
+        INPUT_TRIGGER_LABEL: ${{ inputs.trigger_label }}
+        INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
+        INPUT_WORKER_ALLOWED_TOOLS: ${{ inputs.worker_allowed_tools }}
+        INPUT_REVIEWER_TOOLS: ${{ inputs.reviewer_tools }}
+        INPUT_MERGE_STRATEGY: ${{ inputs.merge_strategy }}
+        INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
+        INPUT_WORKER_TONE: ${{ inputs.worker_tone }}
+        INPUT_REVIEWER_TONE: ${{ inputs.reviewer_tone }}
+        INPUT_COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
+        INPUT_COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
+        INPUT_RALPH_REVIEW_COMMAND: ${{ inputs.ralph_review_command }}
+        INPUT_SECURITY_GATE_ENABLED: ${{ inputs.security_gate_enabled }}
+        INPUT_SECURITY_GATE_MODEL: ${{ inputs.security_gate_model }}
+        INPUT_MAX_TURNS_SECURITY_GATE: ${{ inputs.max_turns_security_gate }}
+        INPUT_SECURITY_GATE_TOOLS: ${{ inputs.security_gate_tools }}
+        INPUT_SECURITY_GATE_TONE: ${{ inputs.security_gate_tone }}
+        INPUT_SBX_ENABLED: ${{ inputs.sbx_enabled }}
+        INPUT_SBX_VERSION: ${{ inputs.sbx_version }}
+        INPUT_SBX_SHA256: ${{ inputs.sbx_sha256 }}
+        INPUT_SBX_NETWORK_POLICY: ${{ inputs.sbx_network_policy }}
+        INPUT_DOCKER_HUB_USER: ${{ inputs.docker_hub_user }}
+        INPUT_DOCKER_HUB_TOKEN: ${{ inputs.docker_hub_token }}

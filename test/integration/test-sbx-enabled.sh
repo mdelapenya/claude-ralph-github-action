@@ -36,8 +36,10 @@ test_sbx_enabled_shipped_flow() {
   state_write_iteration "0"
 
   # Write sbx-info.txt so sbx-exec.sh can find the mock sbx on PATH
-  # (in real usage, sbx-setup.sh writes this file)
+  # (in real usage, sbx-setup.sh writes this file). sbx_active=true signals that
+  # the sandbox is live, so sbx-exec.sh routes claude through `sbx exec`.
   {
+    echo "sbx_active=true"
     echo "sandbox_name=ralph-sandbox"
     echo "app_name=claude-ralph"
     echo "network_policy=balanced"

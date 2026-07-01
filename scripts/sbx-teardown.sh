@@ -8,14 +8,17 @@ set -euo pipefail
 SBX_SANDBOX_NAME="${SBX_SANDBOX_NAME:-ralph-sandbox}"
 SBX_APP_NAME="${SBX_APP_NAME:-claude-ralph}"
 
-# Ensure sbx binary is on PATH (sbx-setup.sh runs as a subprocess, so its
-# PATH export doesn't propagate to scripts invoked later by the parent).
+# Nothing to tear down if sbx never activated (e.g. degraded on a KVM-less
+# runner). sbx itself is already on PATH (added by the install step).
 _sbx_info="${RALPH_DIR:-${GITHUB_WORKSPACE:-.}/.ralph}/sbx-info.txt"
 if [[ -f "${_sbx_info}" ]]; then
-  _sbx_bin="$(grep '^sbx_bin=' "${_sbx_info}" | cut -d= -f2)"
-  [[ -n "${_sbx_bin}" ]] && export PATH="${_sbx_bin}:${PATH}"
+  _sbx_active="$(grep '^sbx_active=' "${_sbx_info}" | cut -d= -f2)"
+  if [[ "${_sbx_active}" != "true" ]]; then
+    echo "=== sbx Teardown skipped (sandbox was not active) ==="
+    exit 0
+  fi
 fi
-unset _sbx_info _sbx_bin
+unset _sbx_info _sbx_active
 
 echo "=== sbx Teardown ==="
 

@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Docker-based GitHub Action implementing the "Ralph loop" pattern: iterative work/review/ship cycles on GitHub issues using Claude Code CLI. When an issue is labeled, the action creates a branch, runs a worker agent (writes code) and reviewer agent (evaluates it) in a loop until the reviewer SHIPs or max iterations is reached, then opens a PR.
+A GitHub Action implementing the "Ralph loop" pattern: iterative work/review/ship cycles on GitHub issues using Claude Code CLI. When an issue is labeled, the action creates a branch, runs a worker agent (writes code) and reviewer agent (evaluates it) in a loop until the reviewer SHIPs or max iterations is reached, then opens a PR.
+
+It is a **composite action** (`runs.using: composite`) that executes on the runner host. On Linux runners with KVM it runs each Claude CLI call inside a [Docker sbx](https://github.com/docker/sbx-releases) sandbox; elsewhere it installs the Claude CLI and runs it directly. (The `Dockerfile` remains only for local testing via `test/run-local.sh`.)
 
 ## Architecture
 

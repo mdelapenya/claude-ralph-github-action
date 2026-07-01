@@ -267,7 +267,7 @@ case "${1:-}" in
     exec "$@"
     ;;
   version)
-    echo "mock-sbx v0.33.0"
+    echo "mock-sbx v0.34.0"
     ;;
   create|stop|rm)
     echo "mock sbx ${1}: ok"

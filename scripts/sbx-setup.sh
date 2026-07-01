@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# sbx-setup.sh - Install and configure Docker sbx sandboxing
+# sbx-setup.sh - Configure the Docker sbx sandbox at runtime
 #
-# Sets up the Docker sbx sandbox environment:
-# 1. Installs sbx from docker/sbx-releases
-# 2. Sets up D-Bus and gnome-keyring for headless credential storage
-# 3. Logs in to Docker Hub via sbx
-# 4. Configures the default network policy
-# 5. Creates a sandbox named "ralph-sandbox"
+# The sbx binary itself is installed by scripts/sbx-install.sh (a dedicated
+# composite-action step). This script assumes sbx is already on PATH and:
+# 1. Sets up D-Bus and gnome-keyring for headless credential storage
+# 2. Logs in to Docker Hub via sbx
+# 3. Configures the default network policy
+# 4. Creates a sandbox named "ralph-sandbox"
 #
 # Required env vars:
 #   INPUT_DOCKER_HUB_USER   - Docker Hub username
@@ -19,12 +19,45 @@ SBX_SANDBOX_NAME="ralph-sandbox"
 SBX_APP_NAME="claude-ralph"
 SBX_NETWORK_POLICY="${INPUT_SBX_NETWORK_POLICY:-balanced}"
 
-# Known-good version and its tarball checksum. The docker/sbx-releases project
-# does not publish a .sha256 sidecar next to the release asset, so we pin the
-# checksum here for the default version. When a different version is pinned via
-# INPUT_SBX_VERSION, the caller must supply INPUT_SBX_SHA256 to keep verification.
-DEFAULT_SBX_VERSION="v0.33.0"
-DEFAULT_SBX_SHA256="decc0f69603e6c4bdd64e39e2a94636beb10aeff35dd3d44e07435ee6ddbf29d"
+# This action runs on the runner host (composite action). System package installs
+# and device permission changes need root; on GitHub-hosted runners the runner
+# user has passwordless sudo. Fall back to no sudo when already root or when sudo
+# is unavailable (e.g. a container-based runner).
+SUDO=""
+if [[ "${EUID:-$(id -u)}" -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+fi
+
+SBX_INFO_FILE="${RALPH_DIR:-${GITHUB_WORKSPACE:-.}/.ralph}/sbx-info.txt"
+
+# Record that sbx could not be activated and let the run continue unsandboxed.
+# sbx-exec.sh reads sbx_active and runs claude directly when it is false.
+_degrade_and_skip() {
+  echo "⚠️  $1"
+  echo "   Claude will run WITHOUT the sbx sandbox for this run."
+  mkdir -p "$(dirname "${SBX_INFO_FILE}")"
+  {
+    echo "sbx_active=false"
+    echo "skip_reason=$1"
+  } > "${SBX_INFO_FILE}"
+  exit 0
+}
+
+# sbx requires a Linux host with KVM. Degrade gracefully anywhere it is missing
+# (non-Linux runners, or Linux runners without nested virtualization) so the
+# loop still runs — just unsandboxed.
+if [[ "$(uname -s)" != "Linux" ]]; then
+  _degrade_and_skip "sbx requires Linux, but this runner is $(uname -s)."
+fi
+if [[ ! -e /dev/kvm ]]; then
+  _degrade_and_skip "/dev/kvm is not available on this runner, so sbx cannot start its micro-VM."
+fi
+# sbx is installed by the "Install sbx" composite step (scripts/sbx-install.sh),
+# which adds it to PATH via GITHUB_PATH. If it is missing here, that step did not
+# run (e.g. sbx-setup.sh invoked outside the action) — degrade rather than fail.
+if ! command -v sbx >/dev/null 2>&1; then
+  _degrade_and_skip "sbx binary not found on PATH; the install step did not run."
+fi
 
 # Validate required credentials
 if [[ -z "${INPUT_DOCKER_HUB_USER:-}" ]]; then
@@ -46,57 +79,13 @@ case "${SBX_NETWORK_POLICY}" in
 esac
 
 echo "=== sbx Setup ==="
-
-# --- Install sbx ---
-echo "Installing sbx..."
-sbx_tmp="$(mktemp -d)"
-# Use the pinned version from the action input (never fetch latest dynamically)
-SBX_VERSION="${INPUT_SBX_VERSION:-${DEFAULT_SBX_VERSION}}"
-echo "  Version: ${SBX_VERSION}"
-
-# Resolve the expected checksum. The release provides no .sha256 sidecar, so we
-# rely on a pinned value: the caller-supplied INPUT_SBX_SHA256, or the built-in
-# default when running the default version. Refuse to proceed unverified.
-expected_checksum="${INPUT_SBX_SHA256:-}"
-if [[ -z "${expected_checksum}" ]]; then
-  if [[ "${SBX_VERSION}" == "${DEFAULT_SBX_VERSION}" ]]; then
-    expected_checksum="${DEFAULT_SBX_SHA256}"
-  else
-    echo "ERROR: no SHA-256 pinned for sbx ${SBX_VERSION}"
-    echo "  Set the sbx_sha256 input to the tarball checksum when overriding sbx_version."
-    rm -rf "${sbx_tmp}"
-    exit 1
-  fi
-fi
-
-sbx_tarball="${sbx_tmp}/docker-sbx.tar.gz"
-curl -fsSL "https://github.com/docker/sbx-releases/releases/download/${SBX_VERSION}/DockerSandboxes-linux.tar.gz" \
-  -o "${sbx_tarball}"
-
-# Verify tarball integrity against the pinned SHA-256 checksum
-actual_checksum="$(sha256sum "${sbx_tarball}" | awk '{print $1}')"
-if [[ "${actual_checksum}" != "${expected_checksum}" ]]; then
-  echo "ERROR: SHA-256 checksum mismatch for sbx tarball"
-  echo "  Expected: ${expected_checksum}"
-  echo "  Actual:   ${actual_checksum}"
-  rm -rf "${sbx_tmp}"
-  exit 1
-fi
-echo "  Checksum verified: ${actual_checksum}"
-
-tar -xzf "${sbx_tarball}" -C "${sbx_tmp}"
-
-SBX_PREFIX="${HOME}/.docker/sbx"
-PREFIX="${SBX_PREFIX}" "${sbx_tmp}/install.sh"
-export PATH="${SBX_PREFIX}/bin:${PATH}"
-rm -rf "${sbx_tmp}"
-
 echo "  sbx version: $(sbx version 2>&1 || echo 'unknown')"
 
 # --- Set up D-Bus and gnome-keyring for headless credential storage ---
+# e2fsprogs provides mkfs.ext4, which sbx needs to build the sandbox filesystem.
 echo "Setting up Secret Service for sbx login..."
-apt-get update -qq 2>/dev/null
-apt-get install -y -qq gnome-keyring dbus libglib2.0-bin 2>/dev/null
+${SUDO} apt-get update -qq 2>/dev/null
+${SUDO} apt-get install -y -qq gnome-keyring dbus libglib2.0-bin e2fsprogs 2>/dev/null
 
 mkdir -p "${HOME}/.local/share/keyrings"
 cat > "${HOME}/.local/share/keyrings/login.keyring" <<'KEYRING'
@@ -159,18 +148,14 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
     echo "SBX_APP_NAME=${SBX_APP_NAME}"
   } >> "${GITHUB_ENV}"
 fi
-# Use GITHUB_PATH (the idiomatic way) to prepend sbx bin to PATH across steps
-if [[ -n "${GITHUB_PATH:-}" ]]; then
-  echo "${SBX_PREFIX}/bin" >> "${GITHUB_PATH}"
-fi
 
-# Write sandbox info so other scripts can source it
-SBX_INFO_FILE="${RALPH_DIR:-${GITHUB_WORKSPACE:-.}/.ralph}/sbx-info.txt"
+# Write sandbox info so other scripts can source it. sbx is already on PATH
+# (added by the install step via GITHUB_PATH), so no sbx_bin is recorded here.
 {
+  echo "sbx_active=true"
   echo "sandbox_name=${SBX_SANDBOX_NAME}"
   echo "app_name=${SBX_APP_NAME}"
   echo "network_policy=${SBX_NETWORK_POLICY}"
-  echo "sbx_bin=${SBX_PREFIX}/bin"
 } > "${SBX_INFO_FILE}"
 
 echo "=== sbx Setup Complete ==="

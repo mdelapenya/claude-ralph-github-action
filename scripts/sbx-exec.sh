@@ -7,23 +7,25 @@
 #
 # Source this file and call `sbx_claude` instead of `claude` directly.
 
-# Ensure sbx binary is on PATH when sbx is enabled.
-# sbx-setup.sh runs as a subprocess, so its PATH export doesn't propagate.
-# We read the install path from .ralph/sbx-info.txt instead.
+# Determine whether the sbx sandbox is actually active for this run.
+# sbx-setup.sh writes sbx_active=false when it degrades — e.g. on a runner
+# without /dev/kvm — so Claude falls back to running directly. The sbx binary is
+# on PATH already (added by the install step via GITHUB_PATH, inherited here).
+SBX_ACTIVE="false"
 if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
   _sbx_info="${RALPH_DIR:-${GITHUB_WORKSPACE:-.}/.ralph}/sbx-info.txt"
   if [[ -f "${_sbx_info}" ]]; then
-    _sbx_bin="$(grep '^sbx_bin=' "${_sbx_info}" | cut -d= -f2)"
-    [[ -n "${_sbx_bin}" ]] && export PATH="${_sbx_bin}:${PATH}"
+    _sbx_active="$(grep '^sbx_active=' "${_sbx_info}" | cut -d= -f2)"
+    [[ "${_sbx_active}" == "true" ]] && SBX_ACTIVE="true"
   fi
-  unset _sbx_info _sbx_bin
+  unset _sbx_info _sbx_active
 fi
 
 # Execute claude, optionally inside an sbx sandbox.
 # All arguments are passed through to the claude CLI.
 # Returns the exit code of the claude invocation.
 sbx_claude() {
-  if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
+  if [[ "${SBX_ACTIVE}" == "true" ]]; then
     local sandbox_name="${SBX_SANDBOX_NAME:-ralph-sandbox}"
     sbx exec "${sandbox_name}" claude "$@"
   else

@@ -108,6 +108,13 @@ jobs:
 | `max_turns_security_gate` | No | _(Claude CLI default)_ | Maximum agentic turns per security gate invocation |
 | `security_gate_tools` | No | `Bash,Read,Write,Glob,Grep` | Comma-separated tools the security gate can use |
 | `security_gate_tone` | No | — | Personality/tone for the security gate agent (e.g., `"Agent Smith"`, `"HAL 9000"`) |
+| `sbx_enabled` | No | `true` | Run Claude inside a [Docker sbx](https://github.com/docker/sbx-releases) sandbox. Requires a Linux runner with KVM (see [Sandboxing](#sandboxing)). Falls back to running Claude directly on non-Linux runners |
+| `sbx_version` | No | `v0.34.0` | Pinned Docker sbx release tag to install |
+| `sbx_sha256` | No | — | Expected SHA-256 of the sbx linux tarball. Required when overriding `sbx_version` (the release ships no `.sha256` sidecar) |
+| `sbx_network_policy` | No | `balanced` | Default sbx network policy: `deny-all`, `allow-all`, or `balanced` |
+| `docker_hub_user` | No | — | Docker Hub username for sbx login. Required when `sbx_enabled` is `true`. Keep as a secret |
+| `docker_hub_token` | No | — | Docker Hub token for sbx login. Required when `sbx_enabled` is `true`. Keep as a secret |
+| `claude_code_version` | No | `2.1.81` | Version of the `@anthropic-ai/claude-code` npm package installed on the runner (non-sandboxed path only) |
 
 ## Outputs
 
@@ -154,6 +161,17 @@ The security gate is a separate Claude agent that runs after every SHIP decision
 Any finding of **MEDIUM severity or higher** writes `FAIL` and forces another worker iteration with the findings as feedback. The gate defaults to `FAIL` if it crashes or produces no output (fail-safe). It also detects prompt injection attempts in any file it reads and treats them as CRITICAL findings.
 
 Disable with `security_gate_enabled: false`. See [SECURITY.md](SECURITY.md) for the full threat model.
+
+### Sandboxing
+
+This is a **composite action** that runs on the runner host. When `sbx_enabled` is `true` (the default), each Claude CLI invocation runs inside a [Docker sbx](https://github.com/docker/sbx-releases) micro-VM sandbox, isolating the agents' file and network access from the runner.
+
+sbx uses hardware virtualization, so the sandbox is only used on **Linux runners with `/dev/kvm`** — which includes GitHub-hosted `ubuntu-*` runners. On those runners the action grants access to `/dev/kvm`, installs the pinned sbx version (checksum-verified), logs in to Docker Hub, and runs Claude via `sbx exec`. Requirements when enabled:
+
+- A Linux runner with KVM (nested virtualization).
+- `docker_hub_user` / `docker_hub_token` inputs (Docker Hub credentials for sbx login), kept as secrets.
+
+On non-Linux runners, or when `sbx_enabled: false`, the sandbox is skipped and Claude runs directly on the runner (the `@anthropic-ai/claude-code` CLI is installed at `claude_code_version`).
 
 ### PR titles
 

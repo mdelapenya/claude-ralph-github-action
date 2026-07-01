@@ -368,13 +368,9 @@ fi
 if [[ "${INPUT_SBX_ENABLED:-true}" == "true" ]]; then
   echo ""
   echo "🐳 === Setting up sbx sandbox ==="
+  # sbx itself is installed by the "Install sbx" composite step (on PATH via
+  # GITHUB_PATH); this configures login, network policy, and the sandbox.
   "${SCRIPTS_DIR}/sbx-setup.sh"
-  # sbx-setup.sh runs as a subprocess, so its PATH export doesn't propagate.
-  # Read the install path from .ralph/sbx-info.txt and add it to PATH here.
-  if [[ -f "${RALPH_DIR}/sbx-info.txt" ]]; then
-    SBX_BIN="$(grep '^sbx_bin=' "${RALPH_DIR}/sbx-info.txt" | cut -d= -f2)"
-    [[ -n "${SBX_BIN}" ]] && export PATH="${SBX_BIN}:${PATH}"
-  fi
 fi
 
 # --- Run the Ralph loop ---
