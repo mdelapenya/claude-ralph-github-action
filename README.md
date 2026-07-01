@@ -108,7 +108,7 @@ jobs:
 | `max_turns_security_gate` | No | _(Claude CLI default)_ | Maximum agentic turns per security gate invocation |
 | `security_gate_tools` | No | `Bash,Read,Write,Glob,Grep` | Comma-separated tools the security gate can use |
 | `security_gate_tone` | No | — | Personality/tone for the security gate agent (e.g., `"Agent Smith"`, `"HAL 9000"`) |
-| `sbx_enabled` | No | `true` | Run Claude inside a [Docker sbx](https://github.com/docker/sbx-releases) sandbox. Requires a Linux runner with KVM (see [Sandboxing](#sandboxing)). Falls back to running Claude directly on non-Linux runners |
+| `sbx_enabled` | No | `true` | Run Claude inside a [Docker sbx](https://docs.docker.com/ai/sandboxes/) sandbox. Requires a Linux runner with KVM (see [Sandboxing](#sandboxing)). Falls back to running Claude directly on non-Linux runners |
 | `sbx_version` | No | `v0.34.0` | Pinned Docker sbx release tag to install |
 | `sbx_sha256` | No | — | Expected SHA-256 of the sbx linux tarball. Required when overriding `sbx_version` (the release ships no `.sha256` sidecar) |
 | `sbx_network_policy` | No | `balanced` | Default sbx network policy: `deny-all`, `allow-all`, or `balanced` |
@@ -164,7 +164,7 @@ Disable with `security_gate_enabled: false`. See [SECURITY.md](SECURITY.md) for 
 
 ### Sandboxing
 
-This is a **composite action** that runs on the runner host. When `sbx_enabled` is `true` (the default), each Claude CLI invocation runs inside a [Docker sbx](https://github.com/docker/sbx-releases) micro-VM sandbox, isolating the agents' file and network access from the runner.
+This is a **composite action** that runs on the runner host. When `sbx_enabled` is `true` (the default), each Claude CLI invocation runs inside a [Docker sbx](https://docs.docker.com/ai/sandboxes/) micro-VM sandbox, isolating the agents' file and network access from the runner. See the [Docker Sandboxes documentation](https://docs.docker.com/ai/sandboxes/) for background on how sbx works, and the [`docker/sbx-releases`](https://github.com/docker/sbx-releases) repository for the pinned release binaries.
 
 sbx uses hardware virtualization, so the sandbox is only used on **Linux runners with `/dev/kvm`** — which includes GitHub-hosted `ubuntu-*` runners. On those runners the action grants access to `/dev/kvm`, installs the pinned sbx version (checksum-verified), logs in to Docker Hub, and runs Claude via `sbx exec`. Requirements when enabled:
 
@@ -172,6 +172,36 @@ sbx uses hardware virtualization, so the sandbox is only used on **Linux runners
 - `docker_hub_user` / `docker_hub_token` inputs (Docker Hub credentials for sbx login), kept as secrets.
 
 On non-Linux runners, or when `sbx_enabled: false`, the sandbox is skipped and Claude runs directly on the runner (the `@anthropic-ai/claude-code` CLI is installed at `claude_code_version`).
+
+#### Sandbox inputs
+
+The following inputs control the sandbox. See the [Inputs](#inputs) table for defaults.
+
+| Input | Description |
+|-------|-------------|
+| `sbx_enabled` | Run Claude inside a Docker sbx sandbox (default `true`). Set to `false` to run Claude directly on the runner |
+| `sbx_version` | Pinned Docker sbx release tag to install (e.g., `v0.34.0`) |
+| `sbx_sha256` | Expected SHA-256 of the sbx linux tarball. Required when overriding `sbx_version`, since the release ships no `.sha256` sidecar |
+| `sbx_network_policy` | Default sbx network policy: `deny-all`, `allow-all`, or `balanced` |
+| `docker_hub_user` | Docker Hub username for sbx login. Required when `sbx_enabled` is `true`; keep as a secret |
+| `docker_hub_token` | Docker Hub token for sbx login. Required when `sbx_enabled` is `true`; keep as a secret |
+
+**Example workflow configuration with sandboxing enabled:**
+
+```yaml
+# Pin to an immutable SHA for supply chain security (SLSA/SSDF compliance).
+# To find the SHA: gh release view v1 --repo mdelapenya/claude-ralph-github-action --json targetCommitish
+# Example: mdelapenya/claude-ralph-github-action@abc1234def5678  # v1
+- uses: mdelapenya/claude-ralph-github-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    sbx_enabled: true
+    sbx_network_policy: balanced
+    docker_hub_user: ${{ secrets.DOCKER_HUB_USER }}
+    docker_hub_token: ${{ secrets.DOCKER_HUB_TOKEN }}
+```
+
+**To disable sandboxing** (e.g., on self-hosted runners without KVM), set `sbx_enabled: false`. Docker Hub credentials are not needed in that case.
 
 ### PR titles
 
