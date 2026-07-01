@@ -21,15 +21,18 @@ unset _sbx_info _sbx_active
 
 echo "=== sbx Teardown ==="
 
-# Stop and remove the sandbox (ignore errors — sandbox may already be gone)
+# Stop and remove the sandbox (ignore errors — sandbox may already be gone).
+# Teardown is best-effort cleanup: bound every command with `timeout` so it can
+# never hang the job, redirect stdin from /dev/null and pass -f/--yes so nothing
+# blocks on an interactive confirmation prompt.
 echo "Stopping sandbox: ${SBX_SANDBOX_NAME}"
-sbx stop "${SBX_SANDBOX_NAME}" 2>/dev/null || true
+timeout 60 sbx stop "${SBX_SANDBOX_NAME}" </dev/null 2>/dev/null || true
 
 echo "Removing sandbox: ${SBX_SANDBOX_NAME}"
-sbx rm "${SBX_SANDBOX_NAME}" 2>/dev/null || true
+timeout 60 sbx rm -f "${SBX_SANDBOX_NAME}" </dev/null 2>/dev/null || true
 
 # Logout from Docker Hub
 echo "Logging out from sbx..."
-sbx logout --yes 2>/dev/null || true
+timeout 30 sbx logout --yes </dev/null 2>/dev/null || true
 
 echo "=== sbx Teardown Complete ==="
